@@ -147,6 +147,66 @@ async def on_member_update(before, after):
         await log_channel.send(embed=embed)
 
 
+################################
+# ban/unban logs
+################################# 
+@bot.event
+async def on_member_ban(guild, user):
+    """Log when a member is banned"""
+    log_channel = get_log_channel(guild)
+    if not log_channel:
+        return
+    
+    # Get ban info from audit logs
+    entry = await get_audit_log_entry(guild, discord.AuditLogAction.ban, user)
+    ban_reason = entry.reason if entry and entry.reason else "No reason provided"
+    banned_by = entry,user if entry else "Unknown"
+    
+    embed = create_log_embed(
+        title="🔨 member banned",
+        description=(
+            f"**Member:** {user} ({user.id})\n"
+            f"**Banned by:** {banned_by}\n"
+            f"**Reason:** {ban_reason}\n"
+            f"**Member ID:** {user.id}"
+        ),
+        color=discord.Color.red(),
+        guild=guild
+    )
+    if user.avatar:
+        embed.set_thumbnail(url=user.avatar.url)
+
+    await log_channel.send(embed=embed)
+
+@bot.event
+async def on_member_unban(guild, user):
+    """Log when a member is unbanned"""
+    log_channel = get_log_channel(guild)
+    if not log_channel:
+        return
+    
+    # Get unban info from audit logs
+    entry = await get_audit_log_entry(guild, discord.AuditLogAction.unban, user)
+    unbanned_by = entry.user if entry else "Unknown"
+    
+    embed = create_log_embed(
+        title="🔨 member unbanned",
+        description=(
+            f"**Member:** {user} ({user.id})\n"
+            f"**Unbanned by:** {unbanned_by}\n"
+            f"**Member ID:** {user.id}"
+        ),
+        color=discord.Color.green(),
+        guild=guild
+    )
+    if user.avatar:
+        embed.set_thumbnail(url=user.avatar.url)
+
+    await log_channel.send(embed=embed)
+
+    
+
+
 
 
 
