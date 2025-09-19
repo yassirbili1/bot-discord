@@ -21,6 +21,7 @@ intents.message_content = True
 intents.voice_states = True
 intents.invites = True
 bot = commands.Bot(command_prefix="!", intents=intents)
+intents.moderation = True  # Required for audit logs
 
 
 #store invite data
