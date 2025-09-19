@@ -1,0 +1,6 @@
+discord
+pystyle
+dotenv
+yt_dlp
+os
+asyncio
