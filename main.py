@@ -202,21 +202,23 @@ async def on_member_ban(guild, user):
     # Get ban info from audit logs
     entry = await get_audit_log_entry(guild, discord.AuditLogAction.ban, user)
     ban_reason = entry.reason if entry and entry.reason else "No reason provided"
-    banned_by = entry,user if entry else "Unknown"
+    banned_by = entry.user.mention if entry and entry.user else "Unknown"  # Fixed typo here
     
     embed = create_log_embed(
-        title="🔨 member banned",
+        title="🔨 Member Banned",
         description=(
             f"**Member:** {user} ({user.id})\n"
             f"**Banned by:** {banned_by}\n"
             f"**Reason:** {ban_reason}\n"
-            f"**Member ID:** {user.id}"
+            f"**Timestamp:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
         ),
         color=discord.Color.red(),
         guild=guild
     )
     if user.avatar:
         embed.set_thumbnail(url=user.avatar.url)
+    else:
+        embed.set_thumbnail(url=user.default_avatar.url)
 
     await log_channel.send(embed=embed)
 
@@ -229,22 +231,71 @@ async def on_member_unban(guild, user):
     
     # Get unban info from audit logs
     entry = await get_audit_log_entry(guild, discord.AuditLogAction.unban, user)
-    unbanned_by = entry.user if entry else "Unknown"
+    unbanned_by = entry.user.mention if entry and entry.user else "Unknown"
+    unban_reason = entry.reason if entry and entry.reason else "No reason provided"
     
     embed = create_log_embed(
-        title="🔨 member unbanned",
+        title="🔓 Member Unbanned",
         description=(
             f"**Member:** {user} ({user.id})\n"
             f"**Unbanned by:** {unbanned_by}\n"
-            f"**Member ID:** {user.id}"
+            f"**Reason:** {unban_reason}\n"
+            f"**Timestamp:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
         ),
         color=discord.Color.green(),
         guild=guild
     )
     if user.avatar:
         embed.set_thumbnail(url=user.avatar.url)
+    else:
+        embed.set_thumbnail(url=user.default_avatar.url)
 
     await log_channel.send(embed=embed)
+
+
+################################
+# kick/unkick logs
+#################################
+
+@bot.event
+async def on_member_remove(member):
+    """Log when a member leaves or is kicked"""
+    log_channel = get_log_channel(member.guild)
+    if not log_channel:
+        return
+    
+    # Wait a bit for audit logs to populate
+    await asyncio.sleep(1)
+    
+    # Check if it was a kick
+    kick_entry = await get_audit_log_entry(member.guild, discord.AuditLogAction.kick, member)
+    
+    if kick_entry:
+        # Member was kicked
+        kick_reason = kick_entry.reason if kick_entry.reason else "No reason provided"
+        kicked_by = kick_entry.user.mention if kick_entry.user else "Unknown"
+        
+        embed = create_log_embed(
+            title="👢 Member Kicked",
+            description=(
+                f"**Member:** {member.mention} ({member})\n"
+                f"**Kicked by:** {kicked_by}\n"
+                f"**Reason:** {kick_reason}\n"
+                f"**Member ID:** {member.id}\n"
+                f"**Account Created:** {member.created_at.strftime('%Y-%m-%d %H:%M:%S')} UTC"
+            ),
+            color=discord.Color.orange(),
+            guild=member.guild
+        )
+        if member.avatar:
+            embed.set_thumbnail(url=member.avatar.url)
+        else:
+            embed.set_thumbnail(url=member.default_avatar.url)
+            
+        await log_channel.send(embed=embed)
+
+
+
 
 
 
