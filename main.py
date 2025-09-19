@@ -295,12 +295,330 @@ async def on_member_remove(member):
         await log_channel.send(embed=embed)
 
 
+###############################
+# message delete/edit logs
+###############################
+
+@bot.event
+async def on_message_delete(message):
+    """Log when a message is deleted"""
+    if message.author.bot:
+        return  # Ignore bot messages
+    
+    log_channel = get_log_channel(message.guild)
+    if not log_channel:
+        return
+    
+    embed = create_log_embed(
+        title="🗑️ Message Deleted",
+        description=(
+            f"**Author:** {message.author.mention} ({message.author})\n"
+            f"**Channel:** {message.channel.mention}\n"
+            f"**Message ID:** {message.id}\n"
+            f"**Content:** {message.content if message.content else 'No text content'}\n"
+            f"**Timestamp:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
+        ),
+        color=discord.Color.dark_grey(),
+        guild=message.guild
+    )
+    if message.attachments:
+        embed.add_field(name="Attachments", value='\n'.join([att.url for att in message.attachments]), inline=False)
+    
+    await log_channel.send(embed=embed)
 
 
+@bot.event
+async def on_message_edit(before, after):
+    """Log when a message is edited"""
+    if before.author.bot:
+        return  # Ignore bot messages
+    
+    log_channel = get_log_channel(before.guild)
+    if not log_channel:
+        return
+    
+    if before.content == after.content:
+        return  # Ignore embed or attachment-only edits
+    
+    embed = create_log_embed(
+        title="✏️ Message Edited",
+        description=(
+            f"**Author:** {before.author.mention} ({before.author})\n"
+            f"**Channel:** {before.channel.mention}\n"
+            f"**Message ID:** {before.id}\n"
+            f"**Before:** {before.content if before.content else 'No text content'}\n"
+            f"**After:** {after.content if after.content else 'No text content'}\n"
+            f"**Timestamp:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
+        ),
+        color=discord.Color.blue(),
+        guild=before.guild
+    )
+    await log_channel.send(embed=embed)
 
+###############################
+# voice join/leave/move logs
+###############################
 
+@bot.event
+async def on_voice_state_update(member, before, after):
+    """Log when a member joins, leaves, or moves voice channels"""
+    log_channel = get_log_channel(member.guild)
+    if not log_channel:
+        return
 
+    action = None
+    if before.channel is None and after.channel is not None:
+        action = "🔊 Joined Voice Channel"
+        description = (
+            f"**Member:** {member.mention} ({member})\n"
+            f"**Channel:** {after.channel.mention}\n"
+            f"**Member ID:** {member.id}\n"
+            f"**Timestamp:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
+        )
+        color = discord.Color.green()
+    elif before.channel is not None and after.channel is None:
+        action = "🔇 Left Voice Channel"
+        description = (
+            f"**Member:** {member.mention} ({member})\n"
+            f"**Channel:** {before.channel.mention}\n"
+            f"**Member ID:** {member.id}\n"
+            f"**Timestamp:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
+        )
+        color = discord.Color.red()
+    elif before.channel is not None and after.channel is not None and before.channel != after.channel:
+        action = "🔀 Moved Voice Channel"
+        description = (
+            f"**Member:** {member.mention} ({member})\n"
+            f"**From:** {before.channel.mention}\n"
+            f"**To:** {after.channel.mention}\n"
+            f"**Member ID:** {member.id}\n"
+            f"**Timestamp:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
+        )
+        color = discord.Color.orange()
 
+    if action:
+        embed = create_log_embed(
+            title=action,
+            description=description,
+            color=color,
+            guild=member.guild
+        )
+        await log_channel.send(embed=embed)
 
+###############################
+# server role/channel/invite updates
+###############################
+
+@bot.event
+async def on_guild_role_create(role):
+    """Log when a role is created"""
+    log_channel = get_log_channel(role.guild)
+    if not log_channel:
+        return
+    
+    # Get who created the role from audit logs
+    entry = await get_audit_log_entry(role.guild, discord.AuditLogAction.role_create, role)
+    created_by = entry.user.mention if entry and entry.user else "Unknown"
+    
+    embed = create_log_embed(
+        title="🆕 Role Created",
+        description=(
+            f"**Role:** {role.name} ({role.id})\n"
+            f"**Created by:** {created_by}\n"
+            f"**Color:** {role.color}\n"
+            f"**Hoisted:** {role.hoist}\n"
+            f"**Mentionable:** {role.mentionable}\n"
+            f"**Position:** {role.position}\n"
+            f"**Timestamp:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
+        ),
+        color=discord.Color.green(),
+        guild=role.guild
+    )
+    await log_channel.send(embed=embed)
+
+@bot.event
+async def on_guild_role_delete(role):
+    """Log when a role is deleted"""
+    log_channel = get_log_channel(role.guild)
+    if not log_channel:
+        return
+    
+    # Get who deleted the role from audit logs
+    entry = await get_audit_log_entry(role.guild, discord.AuditLogAction.role_delete, role)
+    deleted_by = entry.user.mention if entry and entry.user else "Unknown"
+    
+    embed = create_log_embed(
+        title="🗑️ Role Deleted",
+        description=(
+            f"**Role:** {role.name} ({role.id})\n"
+            f"**Deleted by:** {deleted_by}\n"
+            f"**Color:** {role.color}\n"
+            f"**Hoisted:** {role.hoist}\n"
+            f"**Mentionable:** {role.mentionable}\n"
+            f"**Position:** {role.position}\n"
+            f"**Timestamp:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
+        ),
+        color=discord.Color.red(),
+        guild=role.guild
+    )
+    await log_channel.send(embed=embed)
+
+@bot.event
+async def on_guild_role_update(before, after):
+    """Log when a role is updated"""
+    log_channel = get_log_channel(after.guild)
+    if not log_channel:
+        return
+    
+    # Get who updated the role from audit logs
+    entry = await get_audit_log_entry(after.guild, discord.AuditLogAction.role_update, after)
+    updated_by = entry.user.mention if entry and entry.user else "Unknown"
+    
+    changes = []
+    if before.name != after.name:
+        changes.append(f"**Name:** {before.name} ➔ {after.name}")
+    if before.color != after.color:
+        changes.append(f"**Color:** {before.color} ➔ {after.color}")
+    if before.hoist != after.hoist:
+        changes.append(f"**Hoisted:** {before.hoist} ➔ {after.hoist}")
+    if before.mentionable != after.mentionable:
+        changes.append(f"**Mentionable:** {before.mentionable} ➔ {after.mentionable}")
+    if before.position != after.position:
+        changes.append(f"**Position:** {before.position} ➔ {after.position}")
+    
+    if not changes:
+        return  # No significant changes to log
+    
+    embed = create_log_embed(
+        title="✏️ Role Updated",
+        description=(
+            f"**Role:** {after.name} ({after.id})\n"
+            f"**Updated by:** {updated_by}\n"
+            f"**Changes:**\n" + "\n".join(changes) + "\n"
+            f"**Timestamp:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
+        ),
+        color=discord.Color.blue(),
+        guild=after.guild
+    )
+    await log_channel.send(embed=embed)
+
+@bot.event
+async def on_guild_channel_create(channel):
+    """Log when a channel is created"""
+    log_channel = get_log_channel(channel.guild)
+    if not log_channel:
+        return
+    
+    # Get who created the channel from audit logs
+    entry = await get_audit_log_entry(channel.guild, discord.AuditLogAction.channel_create, channel)
+    created_by = entry.user.mention if entry and entry.user else "Unknown"
+    
+    embed = create_log_embed(
+        title="🆕 Channel Created",
+        description=(
+            f"**Channel:** {channel.mention} ({channel.id})\n"
+            f"**Type:** {str(channel.type).split('.')[-1].title()}\n"
+            f"**Created by:** {created_by}\n"
+            f"**Category:** {channel.category.mention if channel.category else 'None'}\n"
+            f"**NSFW:** {channel.is_nsfw()}\n"
+            f"**Timestamp:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
+        ),
+        color=discord.Color.green(),
+        guild=channel.guild
+    )
+    await log_channel.send(embed=embed)
+
+@bot.event
+async def on_guild_channel_delete(channel):
+    """Log when a channel is deleted"""
+    log_channel = get_log_channel(channel.guild)
+    if not log_channel:
+        return
+    
+    # Get who deleted the channel from audit logs
+    entry = await get_audit_log_entry(channel.guild, discord.AuditLogAction.channel_delete, channel)
+    deleted_by = entry.user.mention if entry and entry.user else "Unknown"
+    
+    embed = create_log_embed(
+        title="🗑️ Channel Deleted",
+        description=(
+            f"**Channel:** {channel.name} ({channel.id})\n"
+            f"**Type:** {str(channel.type).split('.')[-1].title()}\n"
+            f"**Deleted by:** {deleted_by}\n"
+            f"**Category:** {channel.category.mention if channel.category else 'None'}\n"
+            f"**NSFW:** {channel.is_nsfw()}\n"
+            f"**Timestamp:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
+        ),
+        color=discord.Color.red(),
+        guild=channel.guild
+    )
+    await log_channel.send(embed=embed)
+
+@bot.event
+async def on_guild_channel_update(before, after):
+    """Log when a channel is updated"""
+    log_channel = get_log_channel(after.guild)
+    if not log_channel:
+        return
+    
+    # Get who updated the channel from audit logs
+    entry = await get_audit_log_entry(after.guild, discord.AuditLogAction.channel_update, after)
+    updated_by = entry.user.mention if entry and entry.user else "Unknown"
+    
+    changes = []
+    if before.name != after.name:
+        changes.append(f"**Name:** {before.name} ➔ {after.name}")
+    if before.category != after.category:
+        changes.append(f"**Category:** {before.category.mention if before.category else 'None'} ➔ {after.category.mention if after.category else 'None'}")
+    if hasattr(before, 'is_nsfw') and before.is_nsfw() != after.is_nsfw():
+        changes.append(f"**NSFW:** {before.is_nsfw()} ➔ {after.is_nsfw()}")
+    if hasattr(before, 'bitrate') and before.bitrate != after.bitrate:
+        changes.append(f"**Bitrate:** {before.bitrate} ➔ {after.bitrate}")
+    if hasattr(before, 'user_limit') and before.user_limit != after.user_limit:
+        changes.append(f"**User Limit:** {before.user_limit} ➔ {after.user_limit}")
+    
+    if not changes:
+        return  # No significant changes to log
+    
+    embed = create_log_embed(
+        title="✏️ Channel Updated",
+        description=(
+            f"**Channel:** {after.mention} ({after.id})\n"
+            f"**Updated by:** {updated_by}\n"
+            f"**Changes:**\n" + "\n".join(changes) + "\n"
+            f"**Timestamp:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
+        ),
+        color=discord.Color.blue(),
+        guild=after.guild
+    )
+    await log_channel.send(embed=embed)
+
+@bot.event
+async def on_guild_invite_create(invite):
+    """Log when an invite is created"""
+    log_channel = get_log_channel(invite.guild)
+    if not log_channel:
+        return
+    
+    # Get who created the invite from audit logs
+    entry = await get_audit_log_entry(invite.guild, discord.AuditLogAction.invite_create, None)
+    created_by = entry.user.mention if entry and entry.user else "Unknown"
+    
+    embed = create_log_embed(
+        title="🆕 Invite Created",
+        description=(
+            f"**Invite:** {invite.url}\n"
+            f"**Code:** {invite.code}\n"
+            f"**Created by:** {created_by}\n"
+            f"**Channel:** {invite.channel.mention if invite.channel else 'Unknown'}\n"
+            f"**Max Uses:** {invite.max_uses if invite.max_uses else 'Unlimited'}\n"
+            f"**Temporary:** {invite.temporary}\n"
+            f"**Expires At:** {invite.expires_at.strftime('%Y-%m-%d %H:%M:%S') if invite.expires_at else 'Never'} UTC\n"
+            f"**Timestamp:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
+        ),
+        color=discord.Color.green(),
+        guild=invite.guild
+    )
+    await log_channel.send(embed=embed)
 
 bot.run(TOKEN)
