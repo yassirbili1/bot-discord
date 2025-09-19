@@ -41,13 +41,27 @@ intents.message_content = True  # Enable if you need to read message content
 
 @bot.event
 async def on_ready():
-    print(f'✅bot is online goo{bot.user}')
-
-    #set bot activity
-    activity = streaming=discord.Streaming(name="Playing !help ", url="https://www.twitch.tv/ALXAFRICAHUB")
+    """Cache all invites when bot starts up and set activity"""
+    print(f'{bot.user} has logged in!')
     
-
-    await bot.change_presence(activity=activity)
+    # Set bot activity/status
+    activity = discord.Streaming(
+        name="Playing !help",  # What the bot appears to be streaming
+        url="https://www.twitch.tv/alxafricahub"  # Replace with actual Twitch URL
+    )
+    await bot.change_presence(status=discord.Status.online, activity=activity)
+    
+    # Cache invites for all guilds
+    for guild in bot.guilds:
+        try:
+            invites = await guild.invites()
+            invite_cache[guild.id] = {invite.code: invite.uses for invite in invites}
+        except discord.Forbidden:
+            print(f"No permission to view invites in {guild.name}")
+        except Exception as e:
+            print(f"Error caching invites for {guild.name}: {e}")
+    
+    print(f"Bot is ready and streaming! Cached invites for {len(bot.guilds)} guilds.")
 
 
 ####################################
@@ -204,7 +218,7 @@ async def on_member_unban(guild, user):
 
     await log_channel.send(embed=embed)
 
-    
+
 
 
 
