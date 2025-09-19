@@ -94,7 +94,7 @@ async def get_audit_log_entry(guild, action, target=None, limit=5):
     return None
 
 ####################################
-# MEMBER JOIN/LEAVE LOGS
+# MEMBER ACTION LOGS
 ####################################
 
 @bot.event
@@ -111,19 +111,25 @@ async def on_member_update(before, after):
 
         if added_roles:
             roles = ', '.join([role.mention for role in added_roles])
-            #try to get user who added the role from audit logs
+            
+            # Try to get user who added the role from audit logs
             added_by = "Unknown"
             try:
-                entry = await get_audit_log_entry(after.guild, discord.AuditLogAction.member_role_update, after.id)
+                entry = await get_audit_log_entry(after.guild, discord.AuditLogAction.member_role_update, after)
                 if entry and entry.user:
-                    added_by = str(entry.user.mention)
-            except Exception:
-                pass
+                    added_by = entry.user.mention
+                    # Check if it was the member themselves (via role reaction, etc.)
+                    if entry.user.id == after.id:
+                        added_by = f"{entry.user.mention} (self-assigned)"
+            except Exception as e:
+                print(f"Error getting audit log for role add: {e}")
+            
             embed = create_log_embed(
-                title="➕ role added",
-                description=f"**member:** {after.mention} ({after})\n"
-                            f"**roles added:** {roles}\n"
-                            f"**added by:** {added_by}",
+                title="➕ Role Added",
+                description=f"**Member:** {after.mention} ({after})\n"
+                            f"**Roles Added:** {roles}\n"
+                            f"**Added By:** {added_by}\n"
+                            f"**Member ID:** {after.id}",
                 color=discord.Color.green(),
                 guild=after.guild
             )
@@ -131,18 +137,28 @@ async def on_member_update(before, after):
 
         if removed_roles:
             roles = ', '.join([role.mention for role in removed_roles])
-            #try to get user who removed the role from audit logs
+            
+            # Try to get user who removed the role from audit logs
             removed_by = "Unknown"
             try:
-                entry = await get_audit_log_entry(after.guild, discord.AuditLogAction.member_role_update, after.id)
+                entry = await get_audit_log_entry(after.guild, discord.AuditLogAction.member_role_update, after)
                 if entry and entry.user:
-                    removed_by = str(entry.user.mention)
-            except Exception:
-                pass
+                    removed_by = entry.user.mention
+                    # Check if it was the member themselves
+                    if entry.user.id == after.id:
+                        removed_by = f"{entry.user.mention} (self-removed)"
+                    # Check for common bot actions
+                    elif entry.user.bot:
+                        removed_by = f"{entry.user.mention} (Bot)"
+            except Exception as e:
+                print(f"Error getting audit log for role remove: {e}")
+            
             embed = create_log_embed(
-                title="➖ role removed",
-                description=f"**member:** {after.mention} ({after})\n"
-                            f"**removed by:** {removed_by.mention if isinstance(removed_by, discord.Member) else removed_by}\n",
+                title="➖ Role Removed",
+                description=f"**Member:** {after.mention} ({after})\n"
+                            f"**Roles Removed:** {roles}\n"
+                            f"**Removed By:** {removed_by}\n"
+                            f"**Member ID:** {after.id}",
                 color=discord.Color.orange(),
                 guild=after.guild
             )
@@ -150,17 +166,28 @@ async def on_member_update(before, after):
 
     # Nickname changes
     if before.display_name != after.display_name:
+        # Try to get who changed the nickname
+        changed_by = "Unknown"
+        try:
+            entry = await get_audit_log_entry(after.guild, discord.AuditLogAction.member_update, after)
+            if entry and entry.user:
+                changed_by = entry.user.mention
+                if entry.user.id == after.id:
+                    changed_by = f"{entry.user.mention} (self-changed)"
+        except Exception as e:
+            print(f"Error getting audit log for nickname change: {e}")
+        
         embed = create_log_embed(
-            title="✏️ nickname changed",
+            title="✏️ Nickname Changed",
             description=f"**Member:** {after.mention} ({after})\n"
                         f"**Before:** {before.display_name}\n"
                         f"**After:** {after.display_name}\n"
+                        f"**Changed By:** {changed_by}\n"
                         f"**Member ID:** {after.id}",
             color=discord.Color.blue(),
             guild=after.guild
         )
         await log_channel.send(embed=embed)
-
 
 ################################
 # ban/unban logs
