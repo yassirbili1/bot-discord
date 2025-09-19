@@ -1,6 +1,4 @@
-discord
+discord.py>=2.3.0
 pystyle
-dotenv
-yt_dlp
-os
-asyncio
+yt-dlp
+aiohttp
