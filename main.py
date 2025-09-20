@@ -1068,15 +1068,17 @@ async def ban(ctx, member: discord.Member, *, reason=None):
 # Unban command
 @bot.command()
 @commands.has_permissions(ban_members=True)
-async def unban(ctx, *, user: str):
+async def unban(ctx, *, member):
     banned_users = await ctx.guild.bans()
-    name, discriminator = user.split("#")
+    member_name, member_discriminator = member.split('#')
+
     for ban_entry in banned_users:
-        if ban_entry.user.name == name and ban_entry.user.discriminator == discriminator:
-            await ctx.guild.unban(ban_entry.user)
-            await ctx.send(f"Unbanned {ban_entry.user}")
+        user = ban_entry.user
+        if (user.name, user.discriminator) == (member_name, member_discriminator):
+            await ctx.guild.unban(user)
+            await ctx.send(f"{user} has been unbanned.")
             return
-    await ctx.send(f"User {user} not found in ban list.")
+    await ctx.send(f"No banned user found with the name {member}.")
 
 
 # Kick command
