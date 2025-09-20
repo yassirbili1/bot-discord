@@ -1,13 +1,13 @@
 import discord
 from discord.ext import commands
-from pystyle import Colors,Colorate  # type: ignore
-from datetime import datetime
-import random
 import asyncio
 import os
 import yt_dlp
 import aiohttp
-
+from pystyle import Colors, Colorate
+import random
+import shutil
+import subprocess
 
 
 # ========================================
@@ -37,6 +37,45 @@ intents = discord.Intents.default()
 intents.message_content = True  # Enable if you need to read message content
 
 
+# ========================================
+# FFMPEG SETUP
+# ========================================
+def find_ffmpeg():
+    """Find FFmpeg executable"""
+    # Try common locations
+    possible_paths = [
+        'ffmpeg',  # System PATH
+        '/usr/bin/ffmpeg',  # Linux
+        '/usr/local/bin/ffmpeg',  # Linux/macOS
+        'C:\\ffmpeg\\bin\\ffmpeg.exe',  # Windows
+        './ffmpeg.exe',  # Local Windows
+        './ffmpeg'  # Local Linux/macOS
+    ]
+    
+    for path in possible_paths:
+        if shutil.which(path) or os.path.isfile(path):
+            return path
+    
+    return None
+
+# Set FFmpeg executable
+FFMPEG_PATH = find_ffmpeg()
+if not FFMPEG_PATH:
+    print("❌ FFmpeg not found! Please install FFmpeg.")
+    exit(1)
+else:
+    print(f"✅ FFmpeg found at: {FFMPEG_PATH}")
+
+# ========================================
+# BOT SETUP
+# ========================================
+intents = discord.Intents.default()
+intents.message_content = True
+intents.voice_states = True
+intents.guilds = True
+
+bot = commands.Bot(command_prefix="!", intents=intents)
+
 # Store voice clients and queues
 voice_clients = {}
 music_queues = {}
@@ -59,7 +98,8 @@ ytdl_format_options = {
 
 ffmpeg_options = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-    'options': '-vn'
+    'options': '-vn',
+    'executable': FFMPEG_PATH
 }
 
 ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
@@ -83,9 +123,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         
         filename = data['url'] if stream else ytdl.prepare_filename(data)
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
-
-
-
+    
 
 
 
@@ -679,8 +717,6 @@ async def on_guild_invite_create(invite):
 ############################################################################
 
 
-
-
 @bot.event
 async def on_voice_state_update(member, before, after):
     """Auto-disconnect when bot is alone in voice channel"""
@@ -1051,6 +1087,7 @@ async def on_command_error(ctx, error):
         await ctx.send(embed=embed)
     else:
         print(f"Error: {error}")
+
 
 
 
