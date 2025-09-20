@@ -4,5 +4,5 @@ python-dotenv
 yt-dlp
 aiohttp
 PyNaCl
-ffmpeg-python
+ffmpeg
 cffi
