@@ -1096,16 +1096,19 @@ async def unkick(ctx, member: discord.User):
         await ctx.send("Couldn't DM the user. They may have DMs disabled.")
 
 
-# Timeout (mute) command
+# Timeout command
 @bot.command()
 @commands.has_permissions(moderate_members=True)
 async def timeout(ctx, member: discord.Member, seconds: int, *, reason=None):
-    duration = timedelta(seconds=seconds)
+    """Timeout a member for a certain number of seconds"""
     try:
+        duration = timedelta(seconds=seconds)
         await member.timeout_for(duration, reason=reason)
-        await ctx.send(f"{member} has been timed out for {seconds} seconds.")
+        await ctx.send(f"✅ {member.mention} has been timed out for {seconds} seconds. Reason: {reason or 'No reason provided'}")
     except discord.Forbidden:
-        await ctx.send("I don't have permission to timeout this member.")
+        await ctx.send("❌ I don't have permission to timeout this member.")
+    except Exception as e:
+        await ctx.send(f"⚠️ Error: {e}")
 
 
 # Remove timeout
