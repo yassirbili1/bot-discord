@@ -9,6 +9,7 @@ import random
 import shutil
 import subprocess
 from datetime import datetime
+import imageio_ffmpeg as ffmpeg
 
 
 # ========================================
@@ -42,6 +43,10 @@ intents.message_content = True  # Enable if you need to read message content
 voice_clients = {}
 music_queues = {}
 current_playing = {}
+
+
+FFMPEG_PATH = ffmpeg.get_ffmpeg_exe()
+
 
 # YouTube DLP options
 ytdl_format_options = {
