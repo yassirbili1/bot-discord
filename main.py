@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from discord import app_commands
 from datetime import timedelta
 import asyncio
 import os
@@ -1059,7 +1060,7 @@ async def on_command_error(ctx, error):
 ##########################################################################
 
 # ✅ Ban
-@tree.command(name="ban", description="Ban a member")
+@bot.tree.command(name="ban", description="Ban a member")
 @app_commands.describe(member="Member to ban", reason="Reason for ban")
 async def ban(interaction: discord.Interaction, member: discord.Member, reason: str = "No reason provided"):
     if not interaction.user.guild_permissions.ban_members:
@@ -1070,24 +1071,25 @@ async def ban(interaction: discord.Interaction, member: discord.Member, reason: 
 
 
 # ✅ Unban
-@tree.command(name="unban", description="Unban a user by username#discriminator")
-@app_commands.describe(user="User in format: username#1234")
-async def unban(interaction: discord.Interaction, user: str):
+@bot.tree.command(name="unban", description="Unban a mentioned user")
+async def unban(interaction: discord.Interaction, member: discord.Member):
     if not interaction.user.guild_permissions.ban_members:
         await interaction.response.send_message("You don't have permission to unban.", ephemeral=True)
         return
 
-    name, discriminator = user.split("#")
-    for ban_entry in await interaction.guild.bans():
-        if ban_entry.user.name == name and ban_entry.user.discriminator == discriminator:
+    banned_users = await interaction.guild.bans()
+    for ban_entry in banned_users:
+        if ban_entry.user.id == member.id:
             await interaction.guild.unban(ban_entry.user)
-            await interaction.response.send_message(f"Unbanned {ban_entry.user}")
+            await interaction.response.send_message(f"Unbanned {member}")
             return
-    await interaction.response.send_message(f"User {user} not found in ban list.")
+
+    await interaction.response.send_message(f"{member} is not banned.", ephemeral=True)
+
 
 
 # ✅ Kick
-@tree.command(name="kick", description="Kick a member")
+@bot.tree.command(name="kick", description="Kick a member")
 @app_commands.describe(member="Member to kick", reason="Reason for kick")
 async def kick(interaction: discord.Interaction, member: discord.Member, reason: str = "No reason provided"):
     if not interaction.user.guild_permissions.kick_members:
@@ -1098,7 +1100,7 @@ async def kick(interaction: discord.Interaction, member: discord.Member, reason:
 
 
 # 🚫 "Unkick" (Send Invite)
-@tree.command(name="unkick", description="Send invite to someone you kicked")
+@bot.tree.command(name="unkick", description="Send invite to someone you kicked")
 @app_commands.describe(user="The user to send an invite to")
 async def unkick(interaction: discord.Interaction, user: discord.User):
     invite = await interaction.channel.create_invite(max_uses=1, unique=True)
@@ -1110,7 +1112,7 @@ async def unkick(interaction: discord.Interaction, user: discord.User):
 
 
 # ⏱️ Timeout
-@tree.command(name="timeout", description="Timeout a member for a number of seconds")
+@bot.tree.command(name="timeout", description="Timeout a member for a number of seconds")
 @app_commands.describe(member="Member to timeout", seconds="Duration in seconds", reason="Reason for timeout")
 async def timeout(interaction: discord.Interaction, member: discord.Member, seconds: int, reason: str = "No reason provided"):
     if not interaction.user.guild_permissions.moderate_members:
@@ -1125,7 +1127,7 @@ async def timeout(interaction: discord.Interaction, member: discord.Member, seco
 
 
 # 🛑 Remove Timeout
-@tree.command(name="remove_timeout", description="Remove timeout from a member")
+@bot.tree.command(name="remove_timeout", description="Remove timeout from a member")
 @app_commands.describe(member="Member to remove timeout from")
 async def remove_timeout(interaction: discord.Interaction, member: discord.Member):
     if not interaction.user.guild_permissions.moderate_members:
