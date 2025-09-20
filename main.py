@@ -8,6 +8,7 @@ from pystyle import Colors, Colorate
 import random
 import shutil
 import subprocess
+from datetime import datetime
 
 
 # ========================================
@@ -1047,6 +1048,8 @@ async def on_command_error(ctx, error):
     else:
         print(f"Error: {error}")
 
+
+test
 
 
 
