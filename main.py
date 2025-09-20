@@ -1047,7 +1047,85 @@ async def on_command_error(ctx, error):
         print(f"Error: {error}")
 
 
+##########################################################################
+# give ban/unban/kick/unkick/timeout
+##########################################################################
 
+# Ban command
+@bot.command()
+@commands.has_permissions(ban_members=True)
+async def ban(ctx, member: discord.Member, *, reason=None):
+    await member.ban(reason=reason)
+    await ctx.send(f"{member} has been banned. Reason: {reason}")
+
+
+# Unban command
+@bot.command()
+@commands.has_permissions(ban_members=True)
+async def unban(ctx, *, user: str):
+    banned_users = await ctx.guild.bans()
+    name, discriminator = user.split("#")
+    for ban_entry in banned_users:
+        if ban_entry.user.name == name and ban_entry.user.discriminator == discriminator:
+            await ctx.guild.unban(ban_entry.user)
+            await ctx.send(f"Unbanned {ban_entry.user}")
+            return
+    await ctx.send(f"User {user} not found in ban list.")
+
+
+# Kick command
+@bot.command()
+@commands.has_permissions(kick_members=True)
+async def kick(ctx, member: discord.Member, *, reason=None):
+    await member.kick(reason=reason)
+    await ctx.send(f"{member} has been kicked. Reason: {reason}")
+
+
+# "Unkick" (send invite)
+@bot.command()
+async def unkick(ctx, member: discord.User):
+    invite = await ctx.channel.create_invite(max_uses=1, unique=True)
+    try:
+        await member.send(f"You were kicked, but here's an invite to return: {invite.url}")
+        await ctx.send(f"Invite sent to {member}.")
+    except discord.Forbidden:
+        await ctx.send("Couldn't DM the user. They may have DMs disabled.")
+
+
+# Timeout (mute) command
+@bot.command()
+@commands.has_permissions(moderate_members=True)
+async def timeout(ctx, member: discord.Member, seconds: int, *, reason=None):
+    duration = timedelta(seconds=seconds)
+    try:
+        await member.timeout_for(duration, reason=reason)
+        await ctx.send(f"{member} has been timed out for {seconds} seconds.")
+    except discord.Forbidden:
+        await ctx.send("I don't have permission to timeout this member.")
+
+
+# Remove timeout
+@bot.command()
+@commands.has_permissions(moderate_members=True)
+async def remove_timeout(ctx, member: discord.Member):
+    try:
+        await member.timeout_for(None)
+        await ctx.send(f"Timeout removed from {member}.")
+    except discord.Forbidden:
+        await ctx.send("I don't have permission to remove timeout from this member.")
+
+
+# Error handling
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("You don't have permission to use this command.")
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send("Missing arguments. Please provide all required information.")
+    elif isinstance(error, commands.BadArgument):
+        await ctx.send("Couldn't find the user. Check the name and try again.")
+    else:
+        raise error  # Let the error propagate for debugging
 
 
 
