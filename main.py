@@ -458,6 +458,7 @@ async def on_voice_state_update(member, before, after):
             guild=member.guild
         )
         await log_channel.send(embed=embed)
+        
 
 ###############################
 # server role/channel/invite updates
