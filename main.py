@@ -779,9 +779,18 @@ async def dm_all(ctx, *, message):
             print(f"Failed to DM {member}: {e}")
     await ctx.send(f"DM sent to {success_count} members. Failed to DM {fail_count} members.")
 
+###########################################
+# send dm to member
+###########################################
 
-
-
+@bot.command()
+async def dm_member(ctx, member: discord.Member, *, message):
+    """DM a specific member"""
+    try:
+        await member.send(message)
+        await ctx.send(f"DM sent to {member}.")
+    except Exception as e:
+        await ctx.send(f"Failed to DM {member}: {e}")
 
 
 
