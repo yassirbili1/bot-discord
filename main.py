@@ -676,7 +676,6 @@ async def on_guild_invite_create(invite):
     await log_channel.send(embed=embed)
 
 
-
 ##########################################################################
 # give ban/unban/kick/unkick/timeout
 ##########################################################################
@@ -756,6 +755,29 @@ async def on_command_error(ctx, error):
         await ctx.send("Couldn't find the user. Check the name and try again.")
     else:
         raise error  # Let the error propagate for debugging
+    
+
+#########################################
+# SEND MESSAGE MEMBERS TO DM
+#########################################
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def dm_all(ctx, *, message):
+    """DM all members in the server"""
+    success_count = 0
+    fail_count = 0
+    for member in ctx.guild.members:
+        if member.bot:
+            continue  # Skip bots
+        try:
+            await member.send(message)
+            success_count += 1
+            await asyncio.sleep(1)  # Sleep to avoid rate limits
+        except Exception as e:
+            fail_count += 1
+            print(f"Failed to DM {member}: {e}")
+    await ctx.send(f"DM sent to {success_count} members. Failed to DM {fail_count} members.")
 
 
 
