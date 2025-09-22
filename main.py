@@ -34,7 +34,9 @@ invite_cache = {}
 
 TOKEN = os.getenv('TOKEN')
 if not TOKEN:
-    raise ValueError("TOKEN environment variable is not set")
+    print("TOKEN not found!")
+else:
+    print(f"Token loaded: {TOKEN[:10]}...")  # Shows first 10 chars only
 
 
 
