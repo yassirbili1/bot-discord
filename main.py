@@ -33,7 +33,7 @@ invite_cache = {}
 
 
 # Replace 'your_token_here' with your actual bot token
-TOKEN = 'MTQxODU5NzgzMzMyNTQxMjU2NQ.GuKDvF.-kwXx77MSj5i32fVm1Tr9HhGcoSx5WuPZ-XR0Q'
+TOKEN = 'YASSER'
 LOG_CHANNEL_ID = 1418593690011828415 # Replace with your log channel ID
 
 # Intents are required for accessing certain information
@@ -784,6 +784,7 @@ async def dm_all(ctx, *, message):
 ###########################################
 
 @bot.command()
+@commands.has_permissions(administrator=True)
 async def dm_member(ctx, member: discord.Member, *, message):
     """DM a specific member"""
     try:
@@ -791,6 +792,39 @@ async def dm_member(ctx, member: discord.Member, *, message):
         await ctx.send(f"DM sent to {member}.")
     except Exception as e:
         await ctx.send(f"Failed to DM {member}: {e}")
+
+###########################################
+# make your your voice channel
+###########################################
+
+@bot.command()
+async def play(ctx, url):
+    """Play a song from a URL in the user's voice channel"""
+    if ctx.author.voice is None:
+        await ctx.send("You are not connected to a voice channel.")
+        return
+
+    voice_channel = ctx.author.voice.channel
+
+    if ctx.guild.id not in voice_clients:
+        voice_client = await voice_channel.connect()
+        voice_clients[ctx.guild.id] = voice_client
+        music_queues[ctx.guild.id] = []
+        current_playing[ctx.guild.id] = None
+    else:
+        voice_client = voice_clients[ctx.guild.id]
+        if voice_client.channel != voice_channel:
+            await voice_client.move_to(voice_channel)
+
+    # Add song to queue
+    music_queues[ctx.guild.id].append(url)
+    await ctx.send(f"Added to queue: {url}")
+
+    # If nothing is playing, start playing
+    if current_playing[ctx.guild.id] is None:
+        await play_next(ctx.guild)
+
+
 
 
 
