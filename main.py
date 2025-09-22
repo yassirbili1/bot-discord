@@ -32,6 +32,11 @@ intents.moderation = True  # Required for audit logs
 invite_cache = {}
 
 
+TOKEN = os.getenv('TOKEN')
+if not TOKEN:
+    raise ValueError("TOKEN environment variable is not set")
+
+
 
 LOG_CHANNEL_ID = 1418593690011828415 # Replace with your log channel ID
 
