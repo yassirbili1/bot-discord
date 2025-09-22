@@ -32,8 +32,7 @@ intents.moderation = True  # Required for audit logs
 invite_cache = {}
 
 
-# Replace 'your_token_here' with your actual bot token
-TOKEN = 'YASSER'
+
 LOG_CHANNEL_ID = 1418593690011828415 # Replace with your log channel ID
 
 # Intents are required for accessing certain information
