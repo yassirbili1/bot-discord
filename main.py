@@ -124,6 +124,12 @@ async def on_ready():
             print(f"Error caching invites for {guild.name}: {e}")
     
     print(f"Bot is ready and streaming! Cached invites for {len(bot.guilds)} guilds.")
+    try:
+            synced = await bot.tree.sync()
+            print(f"Synced {len(synced)} commands.")
+    except Exception as e:
+            print(f"Error syncing commands: {e}")
+
 
 
 ####################################
