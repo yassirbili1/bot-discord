@@ -10,7 +10,7 @@ import random
 import shutil
 import subprocess
 from datetime import datetime
-import imageio_ffmpeg as ffmpeg
+
 
 
 # ========================================
@@ -53,7 +53,7 @@ music_queues = {}
 current_playing = {}
 
 
-FFMPEG_PATH = ffmpeg.get_ffmpeg_exe()
+
 
 
 # YouTube DLP options
@@ -798,6 +798,17 @@ async def dm_member(ctx, member: discord.Member, *, message):
         await ctx.send(f"DM sent to {member}.")
     except Exception as e:
         await ctx.send(f"Failed to DM {member}: {e}")
+
+
+
+#########################################
+# exemple Slash cmd
+#########################################
+@bot.tree.command(name="hello", description="say hello")
+async def hello(interaction: discord.Intenraction):
+    await interaction.response.send_message(f"hello man {interaction.user.mention}")
+
+
 
 
 
