@@ -1,4 +1,4 @@
-discord
+-U discord.py
 pystyle
 python-dotenv
 yt-dlp
