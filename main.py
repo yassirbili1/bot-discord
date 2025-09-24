@@ -805,9 +805,10 @@ async def dm_member(ctx, member: discord.Member, *, message):
 #########################################
 # exemple Slash cmd
 #########################################
-@bot.tree.command(name="hello", description="say hello")
-async def hello(interaction: discord.interaction):
-    await interaction.response.send_message(f"hello man {interaction.user.mention}")
+@bot.tree.command(name="hello", description="Say hello")
+async def hello(interaction: discord.Interaction):
+    await interaction.response.send_message(f"Hello man {interaction.user.mention}")
+
 
 
 
