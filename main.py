@@ -694,80 +694,73 @@ async def on_guild_invite_create(invite):
 ##########################################################################
 
 # Ban command
-@bot.command()
-@commands.has_permissions(ban_members=True)
-async def ban(ctx, member: discord.Member, *, reason=None):
+@bot.tree.command(name="ban", description="Ban a member from the server")
+@app_commands.describe(member="The member to ban", reason="Reason for the ban")
+async def ban(interaction: discord.Interaction, member: discord.Member, reason: str = None):
+    if not interaction.user.guild_permissions.ban_members:
+        await interaction.response.send_message("❌ You don't have permission to ban members.", ephemeral=True)
+        return
     await member.ban(reason=reason)
-    await ctx.send(f"{member} has been banned. Reason: {reason}")
+    await interaction.response.send_message(f"✅ {member} has been banned. Reason: {reason or 'No reason provided'}")
 
 
-@bot.command()
-@commands.has_permissions(ban_members=True)
-async def unban(ctx, user: discord.User):
+# Unban command
+@bot.tree.command(name="unban", description="Unban a user")
+@app_commands.describe(user="The user to unban")
+async def unban(interaction: discord.Interaction, user: discord.User):
+    if not interaction.user.guild_permissions.ban_members:
+        await interaction.response.send_message("❌ You don't have permission to unban members.", ephemeral=True)
+        return
     try:
-        await ctx.guild.unban(user)
-        await ctx.send(f"{user} has been unbanned.")
+        await interaction.guild.unban(user)
+        await interaction.response.send_message(f"✅ {user} has been unbanned.")
     except Exception as e:
-        await ctx.send(f"Failed to unban {user}: {e}")
-
+        await interaction.response.send_message(f"⚠️ Failed to unban {user}: {e}")
 
 
 # Kick command
-@bot.command()
-@commands.has_permissions(kick_members=True)
-async def kick(ctx, member: discord.Member, *, reason=None):
+@bot.tree.command(name="kick", description="Kick a member from the server")
+@app_commands.describe(member="The member to kick", reason="Reason for the kick")
+async def kick(interaction: discord.Interaction, member: discord.Member, reason: str = None):
+    if not interaction.user.guild_permissions.kick_members:
+        await interaction.response.send_message("❌ You don't have permission to kick members.", ephemeral=True)
+        return
     await member.kick(reason=reason)
-    await ctx.send(f"{member} has been kicked. Reason: {reason}")
-
-
-# "Unkick" (send invite)
-@bot.command()
-async def unkick(ctx, member: discord.User):
-    invite = await ctx.channel.create_invite(max_uses=1, unique=True)
-    try:
-        await member.send(f"You were kicked, but here's an invite to return: {invite.url}")
-        await ctx.send(f"Invite sent to {member}.")
-    except discord.Forbidden:
-        await ctx.send("Couldn't DM the user. They may have DMs disabled.")
+    await interaction.response.send_message(f"✅ {member} has been kicked. Reason: {reason or 'No reason provided'}")
 
 
 # Timeout command
-@bot.command()
-@commands.has_permissions(moderate_members=True)
-async def timeout(ctx, member: discord.Member, seconds: int, *, reason=None):
-    """Timeout a member for a certain number of seconds"""
+@bot.tree.command(name="timeout", description="Timeout a member for a certain number of seconds")
+@app_commands.describe(member="The member to timeout", seconds="Number of seconds to timeout", reason="Reason for timeout")
+async def timeout(interaction: discord.Interaction, member: discord.Member, seconds: int, reason: str = None):
+    if not interaction.user.guild_permissions.moderate_members:
+        await interaction.response.send_message("❌ You don't have permission to timeout members.", ephemeral=True)
+        return
     try:
         duration = timedelta(seconds=seconds)
         await member.timeout_for(duration, reason=reason)
-        await ctx.send(f"✅ {member.mention} has been timed out for {seconds} seconds. Reason: {reason or 'No reason provided'}")
+        await interaction.response.send_message(
+            f"✅ {member.mention} has been timed out for {seconds} seconds. Reason: {reason or 'No reason provided'}"
+        )
     except discord.Forbidden:
-        await ctx.send("❌ I don't have permission to timeout this member.")
+        await interaction.response.send_message("❌ I don't have permission to timeout this member.")
     except Exception as e:
-        await ctx.send(f"⚠️ Error: {e}")
+        await interaction.response.send_message(f"⚠️ Error: {e}")
 
 
 # Remove timeout
-@bot.command()
-@commands.has_permissions(moderate_members=True)
-async def remove_timeout(ctx, member: discord.Member):
+@bot.tree.command(name="remove_timeout", description="Remove a timeout from a member")
+@app_commands.describe(member="The member to remove timeout from")
+async def remove_timeout(interaction: discord.Interaction, member: discord.Member):
+    if not interaction.user.guild_permissions.moderate_members:
+        await interaction.response.send_message("❌ You don't have permission to remove timeouts.", ephemeral=True)
+        return
     try:
         await member.timeout_for(None)
-        await ctx.send(f"Timeout removed from {member}.")
+        await interaction.response.send_message(f"✅ Timeout removed from {member}.")
     except discord.Forbidden:
-        await ctx.send("I don't have permission to remove timeout from this member.")
+        await interaction.response.send_message("❌ I don't have permission to remove timeout from this member.")
 
-
-# Error handling
-@bot.event
-async def on_command_error(ctx, error):
-    if isinstance(error, commands.MissingPermissions):
-        await ctx.send("You don't have permission to use this command.")
-    elif isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send("Missing arguments. Please provide all required information.")
-    elif isinstance(error, commands.BadArgument):
-        await ctx.send("Couldn't find the user. Check the name and try again.")
-    else:
-        raise error  # Let the error propagate for debugging
     
 
 #########################################
@@ -796,16 +789,15 @@ async def dm_all(ctx, *, message):
 # send dm to member
 ###########################################
 
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def dm_member(ctx, member: discord.Member, *, message):
-    """DM a specific member"""
+@bot.tree.command(name="dm_member", description="DM a specific member")
+@app_commands.describe(member="The member to DM", message="The message to send")
+async def dm_member(interaction: discord.Interaction, member: discord.Member, message: str):
+    """DM a specific member via slash command"""
     try:
         await member.send(message)
-        await ctx.send(f"DM sent to {member}.")
+        await interaction.response.send_message(f"✅ DM sent to {member.mention}.", ephemeral=True)
     except Exception as e:
-        await ctx.send(f"Failed to DM {member}: {e}")
-
+        await interaction.response.send_message(f"❌ Failed to DM {member.mention}: {e}", ephemeral=True)
 
 
 #########################################
