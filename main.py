@@ -108,7 +108,7 @@ async def on_ready():
     
     # Set bot activity/status
     activity = discord.Streaming(
-        name="Playing !help",  # What the bot appears to be streaming
+        name="ALX !help",  # What the bot appears to be streaming
         url="https://www.twitch.tv/alxafricahub"  # Replace with actual Twitch URL
     )
     await bot.change_presence(status=discord.Status.online, activity=activity)
@@ -806,6 +806,9 @@ async def dm_member(interaction: discord.Interaction, member: discord.Member, me
 @bot.tree.command(name="hello", description="Say hello")
 async def hello(interaction: discord.Interaction):
     await interaction.response.send_message(f"Hello man {interaction.user.mention}")
+
+
+
 
 
 
