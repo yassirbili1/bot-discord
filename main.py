@@ -108,7 +108,7 @@ async def on_ready():
     
     # Set bot activity/status
     activity = discord.Streaming(
-        name="ALX !help",  # What the bot appears to be streaming
+        name="/ALX Info",  # What the bot appears to be streaming
         url="https://www.twitch.tv/alxafricahub"  # Replace with actual Twitch URL
     )
     await bot.change_presence(status=discord.Status.online, activity=activity)
@@ -803,10 +803,29 @@ async def dm_member(interaction: discord.Interaction, member: discord.Member, me
 #########################################
 # exemple Slash cmd
 #########################################
-@bot.tree.command(name="hello", description="Say hello")
-async def hello(interaction: discord.Interaction):
-    await interaction.response.send_message(f"Hello man {interaction.user.mention}")
+@bot.tree.command(name="alx_info", description="Take info about ALX Morocco")
+async def alx_info(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="🇲🇦 ALX Morocco",
+        description=(
+            "ALX Morocco is part of **ALX Africa**, an organization that trains the next generation of "
+            "leaders and innovators across Africa.\n\n"
+            "They provide **tech programs** (Software Engineering, Data Analysis, Cloud Computing, and more), "
+            "as well as **leadership and soft skills training**. Learners get access to both online learning "
+            "and **physical hubs** in Morocco (Casablanca, Rabat, etc.) for collaboration and networking.\n\n"
+            "✨ A great place if you're starting your journey in tech or leadership!"
+        ),
+        colour=discord.Colour.red(),
+        timestamp=datetime.datetime.utcnow()
+    )
 
+    embed.set_thumbnail(url="https://i.imgur.com/rdm3W9t.png")  # replace with ALX logo if you want
+    embed.add_field(name="🌍 Programs", value="Software Engineering, Data Analysis, Cloud Computing, and more", inline=False)
+    embed.add_field(name="📍 Hubs", value="Casablanca, Rabat, and other cities", inline=True)
+    embed.add_field(name="💡 Benefits", value="Global-standard training, community support, and career opportunities", inline=False)
+    embed.set_footer(text=f"Powered by ALX Africa | Requested by {interaction.user}", icon_url=interaction.user.display_avatar.url)
+
+    await interaction.response.send_message(embed=embed)
 
 
 
