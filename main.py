@@ -805,7 +805,6 @@ async def dm_member(interaction: discord.Interaction, member: discord.Member, me
 #########################################
 @bot.tree.command(name="help", description="Take info about ALX Morocco")
 async def help_command(interaction: discord.Interaction):
-    await interaction.response.send_message("This will show info about ALX Morocco")
     embed = discord.Embed(
         title="ALX Morocco",
         description=(
