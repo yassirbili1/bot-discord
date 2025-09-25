@@ -818,13 +818,6 @@ async def alx_info(interaction: discord.Interaction):
         colour=discord.Colour.red(),
         timestamp=datetime.datetime.utcnow()
     )
-
-    embed.set_thumbnail(url="https://i.imgur.com/rdm3W9t.png")  # replace with ALX logo if you want
-    embed.add_field(name="🌍 Programs", value="Software Engineering, Data Analysis, Cloud Computing, and more", inline=False)
-    embed.add_field(name="📍 Hubs", value="Casablanca, Rabat, and other cities", inline=True)
-    embed.add_field(name="💡 Benefits", value="Global-standard training, community support, and career opportunities", inline=False)
-    embed.set_footer(text=f"Powered by ALX Africa | Requested by {interaction.user}", icon_url=interaction.user.display_avatar.url)
-
     await interaction.response.send_message(embed=embed)
 
 
