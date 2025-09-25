@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-from datetime import timedelta
+from datetime import datetime, timedelta
 import asyncio
 import os
 import yt_dlp
@@ -803,10 +803,10 @@ async def dm_member(interaction: discord.Interaction, member: discord.Member, me
 #########################################
 # exemple Slash cmd
 #########################################
-@bot.tree.command(name="alx_info", description="Take info about ALX Morocco")
+@bot.tree.command(name="Help", description="Take info about ALX Morocco")
 async def alx_info(interaction: discord.Interaction):
     embed = discord.Embed(
-        title="🇲🇦 ALX Morocco",
+        title="ALX Morocco",
         description=(
             "ALX Morocco is part of **ALX Africa**, an organization that trains the next generation of "
             "leaders and innovators across Africa.\n\n"
@@ -815,10 +815,13 @@ async def alx_info(interaction: discord.Interaction):
             "and **physical hubs** in Morocco (Casablanca, Rabat, etc.) for collaboration and networking.\n\n"
             "✨ A great place if you're starting your journey in tech or leadership!"
         ),
-        colour=discord.Colour.red(),
-        timestamp=datetime.datetime.utcnow()
+        color=discord.Color.blue()
     )
-    await interaction.response.send_message(embed=embed)
+    embed.set_thumbnail(url="https://r2.fivemanage.com/2Fmxtyz3enFCAcfC5wghD/IMG_1071.jpg")
+    embed.add_field(name="🌍 Programs", value="Software Engineering, Data Analysis, Cloud Computing, and more", inline=False)
+    embed.add_field(name="📍 Hubs", value="Casablanca, Rabat, and other cities", inline=True)
+    embed.add_field(name="💡 Benefits", value="Global-standard training, community support, and career opportunities", inline=False)
+    embed.set_footer(text=f"Powered by ALX Africa | Requested by {interaction.user}", icon_url=interaction.user.display_avatar.url)
 
 
 
