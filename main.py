@@ -12,6 +12,7 @@ import shutil
 import subprocess
 from datetime import datetime
 
+timestamp = datetime.utcnow()
 
 
 # ========================================
@@ -822,6 +823,23 @@ async def help_command(interaction: discord.Interaction):
     embed.add_field(name="📍 Hubs", value="Casablanca, Rabat, and other cities", inline=True)
     embed.add_field(name="💡 Benefits", value="Global-standard training, community support, and career opportunities", inline=False)
     embed.set_footer(text=f"Powered by ALX Africa | Requested by {interaction.user}", icon_url=interaction.user.display_avatar.url)
+    await interaction.response.send_message(embed=embed)
+
+
+
+bot.tree.command(name="give_role", description="Give a role to a member")
+@app_commands.describe(member="The member to give the role to", role="The role to give")
+async def give_role(interaction: discord.Interaction, member: discord.Member, role: discord.Role):
+    if not interaction.user.guild_permissions.manage_roles:
+        await interaction.response.send_message("❌ You don't have permission to manage roles.", ephemeral=True)
+        return
+    try:
+        await member.add_roles(role)
+        await interaction.response.send_message(f"✅ {role.mention} has been given to {member.mention}.")
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ I don't have permission to assign that role.", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"⚠️ Error: {e}", ephemeral=True)
 
 
 
