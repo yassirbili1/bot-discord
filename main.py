@@ -843,9 +843,129 @@ async def give_role(interaction: discord.Interaction, member: discord.Member, ro
 
 
 
+bot.tree.command(name="remove_role", description="Remove a role from a member")
+@app_commands.describe(member="The member to remove the role from", role="The role to remove")
+async def remove_role(interaction: discord.Interaction, member: discord.Member, role: discord.Role):
+    if not interaction.user.guild_permissions.manage_roles:
+        await interaction.response.send_message("❌ You don't have permission to manage roles.", ephemeral=True)
+        return
+    try:
+        await member.remove_roles(role)
+        await interaction.response.send_message(f"✅ {role.mention} has been removed from {member.mention}.")
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ I don't have permission to remove that role.", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"⚠️ Error: {e}", ephemeral=True)
 
 
 
+bot.tree.command(name="avatar", description="display user's avatar")
+@app_commands.describe(user="The user to get the avatar of (optional)")
+async def avatar(interaction: discord.Interaction, user: discord.User = None):
+    user = user or interaction.user
+    embed = discord.Embed(title=f"{user}'s Avatar", color=discord.Color.blue())
+    embed.set_image(url=user.display_avatar.url)
+    await interaction.response.send_message(embed=embed)
+
+
+bot.tree.command(name="clear", description="Clear messages in a channel")
+@app_commands.describe(number="Number of messages to delete (max 100)")
+async def clear(interaction: discord.Interaction, number: int):
+    if not interaction.user.guild_permissions.manage_messages:
+        await interaction.response.send_message("❌ You don't have permission to manage messages.", ephemeral=True)
+        return
+    if number < 1 or number > 100:
+        await interaction.response.send_message("❌ Please specify a number between 1 and 100.", ephemeral=True)
+        return
+    deleted = await interaction.channel.purge(limit=number)
+    await interaction.response.send_message(f"🗑️ Deleted {len(deleted)} messages.", ephemeral=True)
+
+
+
+bot.tree.command(name="invite", description="looking for the bot invite link")
+async def invite(interaction: discord.Interaction):
+    invite_link = discord.utils.oauth_url(interaction.client.user.id)
+    await interaction.response.send_message(f"🤖 Here is your bot invite link: {invite_link}")
+
+bot.tree.command(name="lock", description="disable @everyone from sending messages in a channel")
+async def lock(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.manage_roles:
+        await interaction.response.send_message("❌ You don't have permission to manage roles.", ephemeral=True)
+        return
+    try:
+        await interaction.channel.set_permissions(interaction.guild.default_role, send_messages=False)
+        await interaction.response.send_message("🔒 Channel has been locked.")
+    except Exception as e:
+        await interaction.response.send_message(f"⚠️ Error: {e}", ephemeral=True)
+
+
+
+bot.tree.command(name="unlock", description="enable @everyone to send messages in a channel")
+async def unlock(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.manage_roles:
+        await interaction.response.send_message("❌ You don't have permission to manage roles.", ephemeral=True)
+        return
+    try:
+        await interaction.channel.set_permissions(interaction.guild.default_role, send_messages=True)
+        await interaction.response.send_message("🔓 Channel has been unlocked.")
+    except Exception as e:
+        await interaction.response.send_message(f"⚠️ Error: {e}", ephemeral=True)
+
+
+bot.tree.command(name="move all", description="Move all members to the voice channel you are in")
+async def move_all(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.move_members:
+        await interaction.response.send_message("❌ You don't have permission to move members.", ephemeral=True)
+        return
+    if not interaction.user.voice or not interaction.user.voice.channel:
+        await interaction.response.send_message("❌ You need to be in a voice channel to use this command.", ephemeral=True)
+        return
+    target_channel = interaction.user.voice.channel
+    moved_count = 0
+    for member in interaction.guild.members:
+        if member.voice and member.voice.channel and member != interaction.user:
+            try:
+                await member.move_to(target_channel)
+                moved_count += 1
+                await asyncio.sleep(1)  # Sleep to avoid rate limits
+            except Exception as e:
+                print(f"Failed to move {member}: {e}")
+    await interaction.response.send_message(f"✅ Moved {moved_count} members to {target_channel.mention}.")
+
+bot.tree.command(name="move user", description="Move a specific user to the voice channel you are in")
+@app_commands.describe(member="The member to move")
+async def move_user(interaction: discord.Interaction, member: discord.Member):
+    if not interaction.user.guild_permissions.move_members:
+        await interaction.response.send_message("❌ You don't have permission to move members.", ephemeral=True)
+        return
+    if not interaction.user.voice or not interaction.user.voice.channel:
+        await interaction.response.send_message("❌ You need to be in a voice channel to use this command.", ephemeral=True)
+        return
+    target_channel = interaction.user.voice.channel
+    if not member.voice or not member.voice.channel:
+        await interaction.response.send_message(f"❌ {member.mention} is not in a voice channel.", ephemeral=True)
+        return
+    try:
+        await member.move_to(target_channel)
+        await interaction.response.send_message(f"✅ Moved {member.mention} to {target_channel.mention}.")
+    except Exception as e:
+        await interaction.response.send_message(f"⚠️ Failed to move {member.mention}: {e}", ephemeral=True)
+
+
+bot.tree.command(name="moveme", description="Move yourself to another voice channel")
+async def moveme(interaction: discord.Interaction, channel: discord.VoiceChannel):
+    if not interaction.user.guild_permissions.move_members:
+        await interaction.response.send_message("❌ You don't have permission to move members.", ephemeral=True)
+        return
+    if not interaction.user.voice or not interaction.user.voice.channel:
+        await interaction.response.send_message("❌ You need to be in a voice channel to use this command.", ephemeral=True)
+        return
+    target_channel = interaction.user.voice.channel
+    try:
+        await interaction.user.move_to(target_channel)
+        await interaction.response.send_message(f"✅ Moved you to {target_channel.mention}.")
+    except Exception as e:
+        await interaction.response.send_message(f"⚠️ Failed to move you: {e}", ephemeral=True)
 
 
 
