@@ -57,6 +57,10 @@ music_queues = {}
 current_playing = {}
 
 
+# Configuration (adjust these)
+TICKET_CATEGORY_ID = None  # Your category ID or None
+STAFF_ROLE_ID = None  # Your staff role ID or None
+TICKET_COUNTER = 0  # Global ticket counter
 
 
 
@@ -1094,6 +1098,127 @@ async def moveme(interaction: discord.Interaction, channel: discord.VoiceChannel
         await interaction.response.send_message(f"⚠️ Failed to move you: {e}", ephemeral=True)
         print(f"Failed to move {invoker} to {channel}: {e}")
 
+
+@bot.tree.command(name="ticket", description="Create a new support ticket")
+@app_commands.describe(reason="Reason for opening the ticket")
+async def ticket(interaction: discord.Interaction, reason: str = "No reason provided"):
+    global TICKET_COUNTER
+    TICKET_COUNTER += 1
+    
+    guild = interaction.guild
+    category = discord.utils.get(guild.categories, id=TICKET_CATEGORY_ID) if TICKET_CATEGORY_ID else None
+    
+    ticket_name = f"ticket-{TICKET_COUNTER}-{interaction.user.name}"
+    
+    overwrites = {
+        guild.default_role: discord.PermissionOverwrite(read_messages=False),
+        interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+        guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+    }
+    
+    if STAFF_ROLE_ID:
+        staff_role = guild.get_role(STAFF_ROLE_ID)
+        if staff_role:
+            overwrites[staff_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
+    
+    channel = await guild.create_text_channel(
+        name=ticket_name,
+        category=category,
+        overwrites=overwrites,
+        topic=f"Ticket by {interaction.user.name} | Reason: {reason}"
+    )
+    
+    embed = discord.Embed(
+        title="🎫 New Ticket Created",
+        description=f"**Opened by:** {interaction.user.mention}\n**Reason:** {reason}",
+        color=discord.Color.green(),
+        timestamp=datetime.utcnow()
+    )
+    embed.set_footer(text=f"Ticket #{TICKET_COUNTER}")
+    
+    await channel.send(f"{interaction.user.mention}", embed=embed)
+    await interaction.response.send_message(f"✅ Ticket created! {channel.mention}", ephemeral=True)
+
+@bot.tree.command(name="close", description="Close the current ticket")
+async def close(interaction: discord.Interaction):
+    channel = interaction.channel
+    
+    if not channel.name.startswith("ticket-"):
+        await interaction.response.send_message("❌ This command can only be used in ticket channels!", ephemeral=True)
+        return
+    
+    embed = discord.Embed(
+        title="🔒 Ticket Closing",
+        description=f"This ticket will be closed in 5 seconds...\nClosed by {interaction.user.mention}",
+        color=discord.Color.red(),
+        timestamp=datetime.utcnow()
+    )
+    
+    await interaction.response.send_message(embed=embed)
+    await asyncio.sleep(5)
+    await channel.delete()
+
+@bot.tree.command(name="add", description="Add a user to the ticket")
+@app_commands.describe(member="The member to add to this ticket")
+async def add(interaction: discord.Interaction, member: discord.Member):
+    channel = interaction.channel
+    
+    if not channel.name.startswith("ticket-"):
+        await interaction.response.send_message("❌ This command can only be used in ticket channels!", ephemeral=True)
+        return
+    
+    await channel.set_permissions(member, read_messages=True, send_messages=True)
+    
+    embed = discord.Embed(
+        description=f"✅ {member.mention} has been added to the ticket by {interaction.user.mention}",
+        color=discord.Color.blue()
+    )
+    
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="remove", description="Remove a user from the ticket")
+@app_commands.describe(member="The member to remove from this ticket")
+async def remove(interaction: discord.Interaction, member: discord.Member):
+    channel = interaction.channel
+    
+    if not channel.name.startswith("ticket-"):
+        await interaction.response.send_message("❌ This command can only be used in ticket channels!", ephemeral=True)
+        return
+    
+    await channel.set_permissions(member, overwrite=None)
+    
+    embed = discord.Embed(
+        description=f"✅ {member.mention} has been removed from the ticket by {interaction.user.mention}",
+        color=discord.Color.orange()
+    )
+    
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="transcript", description="Generate a transcript of the ticket")
+async def transcript(interaction: discord.Interaction):
+    channel = interaction.channel
+    
+    if not channel.name.startswith("ticket-"):
+        await interaction.response.send_message("❌ This command can only be used in ticket channels!", ephemeral=True)
+        return
+    
+    await interaction.response.defer(ephemeral=True)
+    
+    messages = []
+    async for msg in channel.history(limit=None, oldest_first=True):
+        timestamp = msg.created_at.strftime("%Y-%m-%d %H:%M:%S")
+        messages.append(f"[{timestamp}] {msg.author}: {msg.content}")
+    
+    transcript_text = "\n".join(messages)
+    
+    filename = f"transcript-{channel.name}.txt"
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(f"Ticket Transcript: {channel.name}\n")
+        f.write(f"Generated at: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write("="*50 + "\n\n")
+        f.write(transcript_text)
+    
+    await interaction.followup.send("📄 Transcript generated!", file=discord.File(filename), ephemeral=True)
 
 
 
