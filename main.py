@@ -30,6 +30,11 @@ intents.invites = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree  # Slash command handler
 intents.moderation = True  # Required for audit logs
+intents = discord.Intents.default()
+intents.voice_states = True
+intents.guilds = True
+intents.members = True
+
 
 
 #store invite data
@@ -64,6 +69,9 @@ STAFF_ROLE_ID = None  # Your staff role ID or None
 TICKET_LOG_CHANNEL_ID = 1428398041186172988  # Replace with your log channel ID or None
 TICKET_COUNTER = 0
 
+
+# ✅ Add this line
+guild_settings = {}
 
 
 # YouTube DLP options
