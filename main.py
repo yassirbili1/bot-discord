@@ -1353,6 +1353,45 @@ async def transcript(interaction: discord.Interaction):
 
 
 
+TRIGGER_CHANNEL_ID = 1428403634810388562  # Replace with your actual channel ID
+async def create_private_voice_channel(guild, user):
+    """
+    Helper function to create a new voice channel for the user.
+    """
+    try:
+        # Create a new voice channel with a custom name
+        new_channel = await guild.create_voice_channel(
+            name=f"{user.name}'s Private Room",  # You can customize this name
+            category=None,  # Optional: Set to a category ID if you want it under a specific category
+            reason=f"Auto-created for {user.name}"
+        )
+        
+        # Optionally, set permissions (e.g., make it private to the user)
+        await new_channel.set_permissions(user, connect=True, speak=True)  # Allow the user to connect and speak
+        await new_channel.set_permissions(guild.default_role, connect=False)  # Deny access to everyone else
+        
+        # Move the user to the new channel
+        for voice_state in guild.voice_states.values():
+            if voice_state.channel.id == TRIGGER_CHANNEL_ID and voice_state.user == user:
+                await user.move_to(new_channel)
+                break  # Stop after moving the user
+        
+        print(f"Created new voice channel for {user.name}: {new_channel.name}")
+        
+    except discord.Forbidden:
+        print("Bot lacks permission to create or manage channels.")
+    except discord.HTTPException as e:
+        print(f"Error creating channel: {e}")
+
+@bot.event
+async def on_voice_state_update(member, before, after):
+    """
+    Event handler for when a user's voice state changes (e.g., they join a voice channel).
+    """
+    if after.channel is not None and before.channel != after.channel:  # User joined a new channel
+        if after.channel.id == TRIGGER_CHANNEL_ID:  # Check if it's the trigger channel
+            await create_private_voice_channel(member.guild, member)
+            
 
 
 
