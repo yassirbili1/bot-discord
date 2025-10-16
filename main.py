@@ -59,9 +59,9 @@ current_playing = {}
 
 
 # Configuration (adjust these)
-TICKET_CATEGORY_ID = None  # Your category ID or None
+TICKET_CATEGORY_ID = 1428395363076804762  # Replace with your category ID
 STAFF_ROLE_ID = None  # Your staff role ID or None
-TICKET_COUNTER = 0  # Global ticket counter
+TICKET_COUNTER = 0
 
 
 
@@ -1098,6 +1098,8 @@ async def moveme(interaction: discord.Interaction, channel: discord.VoiceChannel
     except Exception as e:
         await interaction.response.send_message(f"⚠️ Failed to move you: {e}", ephemeral=True)
         print(f"Failed to move {invoker} to {channel}: {e}")
+
+
 
 
 
