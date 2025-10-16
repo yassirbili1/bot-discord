@@ -1107,6 +1107,54 @@ async def moveme(interaction: discord.Interaction, channel: discord.VoiceChannel
 
 
 
+# Function to log ticket closure
+async def log_ticket_close(guild, channel, closed_by, reason):
+    if not TICKET_LOG_CHANNEL_ID:
+        return
+    
+    log_channel = guild.get_channel(TICKET_LOG_CHANNEL_ID)
+    if not log_channel:
+        return
+    
+    # Get ticket opener from channel topic
+    ticket_opener = "Unknown"
+    if channel.topic:
+        ticket_opener = channel.topic.split("Ticket by ")[1] if "Ticket by " in channel.topic else "Unknown"
+    
+    # Create transcript
+    messages = []
+    async for msg in channel.history(limit=100, oldest_first=True):
+        timestamp = msg.created_at.strftime("%Y-%m-%d %H:%M:%S")
+        messages.append(f"[{timestamp}] {msg.author}: {msg.content}")
+    
+    transcript_text = "\n".join(messages)
+    
+    # Create log embed
+    log_embed = discord.Embed(
+        title="🔒 Ticket Closed",
+        color=discord.Color.red(),
+        timestamp=datetime.utcnow()
+    )
+    log_embed.add_field(name="📋 Ticket Name", value=channel.name, inline=True)
+    log_embed.add_field(name="👤 Opened By", value=ticket_opener, inline=True)
+    log_embed.add_field(name="🔐 Closed By", value=closed_by.mention, inline=True)
+    log_embed.add_field(name="📝 Reason", value=reason, inline=False)
+    log_embed.set_footer(text=f"Ticket ID: {channel.id}")
+    
+    # Save transcript to file
+    filename = f"transcript-{channel.name}.txt"
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(f"Ticket Transcript: {channel.name}\n")
+        f.write(f"Opened by: {ticket_opener}\n")
+        f.write(f"Closed by: {closed_by}\n")
+        f.write(f"Reason: {reason}\n")
+        f.write(f"Closed at: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write("="*50 + "\n\n")
+        f.write(transcript_text)
+    
+    # Send log with transcript
+    await log_channel.send(embed=log_embed, file=discord.File(filename))
+
 # Modal for close reason
 class CloseReasonModal(discord.ui.Modal, title="Close Ticket with Reason"):
     reason = discord.ui.TextInput(
@@ -1119,6 +1167,9 @@ class CloseReasonModal(discord.ui.Modal, title="Close Ticket with Reason"):
     
     async def on_submit(self, interaction: discord.Interaction):
         channel = interaction.channel
+        
+        # Log ticket closure
+        await log_ticket_close(interaction.guild, channel, interaction.user, self.reason.value)
         
         embed = discord.Embed(
             title="🔒 Ticket Closing",
@@ -1138,6 +1189,9 @@ class TicketControlView(View):
     
     @discord.ui.button(label="🔒 Close", style=discord.ButtonStyle.red, custom_id="close_ticket")
     async def close_button(self, interaction: discord.Interaction, button: Button):
+        # Log ticket closure
+        await log_ticket_close(interaction.guild, interaction.channel, interaction.user, "No reason provided")
+        
         embed = discord.Embed(
             title="🔒 Ticket Closing",
             description=f"This ticket will be closed in 5 seconds...\nClosed by {interaction.user.mention}",
