@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
+from discord.ui import Button, View
 from datetime import datetime, timedelta
 import asyncio
 import os
@@ -1099,45 +1100,66 @@ async def moveme(interaction: discord.Interaction, channel: discord.VoiceChannel
         print(f"Failed to move {invoker} to {channel}: {e}")
 
 
-@bot.tree.command(name="ticket", description="Create a new support ticket")
-@app_commands.describe(reason="Reason for opening the ticket")
-async def ticket(interaction: discord.Interaction, reason: str = "No reason provided"):
-    global TICKET_COUNTER
-    TICKET_COUNTER += 1
+
+# Ticket Button View
+class TicketButton(View):
+    def __init__(self):
+        super().__init__(timeout=None)
     
-    guild = interaction.guild
-    category = discord.utils.get(guild.categories, id=TICKET_CATEGORY_ID) if TICKET_CATEGORY_ID else None
-    
-    ticket_name = f"ticket-{TICKET_COUNTER}-{interaction.user.name}"
-    
-    overwrites = {
-        guild.default_role: discord.PermissionOverwrite(read_messages=False),
-        interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-        guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True)
-    }
-    
-    if STAFF_ROLE_ID:
-        staff_role = guild.get_role(STAFF_ROLE_ID)
-        if staff_role:
-            overwrites[staff_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
-    
-    channel = await guild.create_text_channel(
-        name=ticket_name,
-        category=category,
-        overwrites=overwrites,
-        topic=f"Ticket by {interaction.user.name} | Reason: {reason}"
-    )
-    
+    @discord.ui.button(label="🎫 Create Ticket", style=discord.ButtonStyle.green, custom_id="create_ticket")
+    async def ticket_button(self, interaction: discord.Interaction, button: Button):
+        global TICKET_COUNTER
+        TICKET_COUNTER += 1
+        
+        guild = interaction.guild
+        category = discord.utils.get(guild.categories, id=TICKET_CATEGORY_ID) if TICKET_CATEGORY_ID else None
+        
+        ticket_name = f"ticket-{TICKET_COUNTER}-{interaction.user.name}"
+        
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(read_messages=False),
+            interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+            guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+        }
+        
+        if STAFF_ROLE_ID:
+            staff_role = guild.get_role(STAFF_ROLE_ID)
+            if staff_role:
+                overwrites[staff_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
+        
+        channel = await guild.create_text_channel(
+            name=ticket_name,
+            category=category,
+            overwrites=overwrites,
+            topic=f"Ticket by {interaction.user.name}"
+        )
+        
+        embed = discord.Embed(
+            title="🎫 New Ticket Created",
+            description=f"**Opened by:** {interaction.user.mention}\n\nPlease describe your issue and wait for staff to assist you.",
+            color=discord.Color.green(),
+            timestamp=datetime.utcnow()
+        )
+        embed.set_footer(text=f"Ticket #{TICKET_COUNTER}")
+        
+        await channel.send(f"{interaction.user.mention}", embed=embed)
+        await interaction.response.send_message(f"✅ Ticket created! {channel.mention}", ephemeral=True)
+
+# Command to send ticket panel
+@bot.tree.command(name="ticket-panel", description="Send the ticket panel with button")
+@app_commands.checks.has_permissions(administrator=True)
+async def ticket_panel(interaction: discord.Interaction):
     embed = discord.Embed(
-        title="🎫 New Ticket Created",
-        description=f"**Opened by:** {interaction.user.mention}\n**Reason:** {reason}",
-        color=discord.Color.green(),
-        timestamp=datetime.utcnow()
+        title="🎫 Support Ticket System",
+        description="Need help? Click the button below to create a support ticket.\n\n**What are tickets?**\nTickets are private channels where you can get help from our staff team.",
+        color=discord.Color.blue()
     )
-    embed.set_footer(text=f"Ticket #{TICKET_COUNTER}")
+    embed.add_field(name="📋 Instructions", value="Click the **Create Ticket** button below and describe your issue.", inline=False)
+    embed.set_footer(text="Our staff will respond as soon as possible")
     
-    await channel.send(f"{interaction.user.mention}", embed=embed)
-    await interaction.response.send_message(f"✅ Ticket created! {channel.mention}", ephemeral=True)
+    view = TicketButton()
+    await interaction.channel.send(embed=embed, view=view)
+    await interaction.response.send_message("✅ Ticket panel sent!", ephemeral=True)
 
 @bot.tree.command(name="close", description="Close the current ticket")
 async def close(interaction: discord.Interaction):
@@ -1219,6 +1241,7 @@ async def transcript(interaction: discord.Interaction):
         f.write(transcript_text)
     
     await interaction.followup.send("📄 Transcript generated!", file=discord.File(filename), ephemeral=True)
+
 
 
 
