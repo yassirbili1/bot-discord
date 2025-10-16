@@ -1411,7 +1411,7 @@ async def on_voice_state_update(member, before, after):
 
         # Background task: delete room when empty
         async def delete_when_empty(channel):
-            await asyncio.sleep(10)  # small delay to prevent instant deletion
+            await asyncio.sleep(2)  # small delay to prevent instant deletion
             while True:
                 await asyncio.sleep(15)
                 if len(channel.members) == 0:
