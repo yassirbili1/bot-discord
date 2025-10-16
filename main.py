@@ -11,6 +11,7 @@ import random
 import shutil
 import subprocess
 from datetime import datetime
+from typing import Optional
 
 timestamp = datetime.utcnow()
 
@@ -35,8 +36,9 @@ invite_cache = {}
 
 
 TOKEN = os.getenv('TOKEN')
-if not TOKEN:
+if TOKEN is None:
     print("TOKEN not found!")
+    raise SystemExit("Environment variable TOKEN is required")
 else:
     print(f"Token loaded: {TOKEN[:10]}...")  # Shows first 10 chars only
 
@@ -78,7 +80,7 @@ ffmpeg_options = {
     'options': '-vn'
 }
 
-ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
+ytdl = yt_dlp.YoutubeDL(ytdl_format_options)  # type: ignore[arg-type]
 
 class YTDLSource(discord.PCMVolumeTransformer):
     def __init__(self, source, *, data, volume=0.5):
@@ -97,8 +99,17 @@ class YTDLSource(discord.PCMVolumeTransformer):
         if 'entries' in data:
             data = data['entries'][0]
         
-        filename = data['url'] if stream else ytdl.prepare_filename(data)
-        return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
+        # Ensure we have a valid source string for FFmpegPCMAudio
+        if stream:
+            filename = data.get('url')
+            if not filename:
+                raise ValueError("Could not retrieve stream URL from ytdl data")
+        else:
+            filename = ytdl.prepare_filename(data)
+            if not filename:
+                raise ValueError("Could not prepare filename from ytdl data")
+        
+        return cls(discord.FFmpegPCMAudio(source=str(filename), **ffmpeg_options), data=data)
 
 
 
@@ -697,70 +708,116 @@ async def on_guild_invite_create(invite):
 # Ban command
 @bot.tree.command(name="ban", description="Ban a member from the server")
 @app_commands.describe(member="The member to ban", reason="Reason for the ban")
-async def ban(interaction: discord.Interaction, member: discord.Member, reason: str = None):
-    if not interaction.user.guild_permissions.ban_members:
+async def ban(interaction: discord.Interaction, member: discord.Member, reason: Optional[str] = None):
+    # Ensure we have a guild Member to check permissions (static analyzers treat interaction.user as User)
+    invoker = interaction.guild.get_member(interaction.user.id) if interaction.guild else None
+    if not invoker or not invoker.guild_permissions.ban_members:
         await interaction.response.send_message("❌ You don't have permission to ban members.", ephemeral=True)
         return
-    await member.ban(reason=reason)
-    await interaction.response.send_message(f"✅ {member} has been banned. Reason: {reason or 'No reason provided'}")
+    try:
+        await member.ban(reason=reason)
+        await interaction.response.send_message(f"✅ {member} has been banned. Reason: {reason or 'No reason provided'}")
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ I don't have permission to ban this member.", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"⚠️ Failed to ban {member}: {e}", ephemeral=True)
+        await interaction.response.send_message(f"⚠️ Failed to ban {member}: {e}", ephemeral=True)
 
 
 # Unban command
 @bot.tree.command(name="unban", description="Unban a user")
 @app_commands.describe(user="The user to unban")
 async def unban(interaction: discord.Interaction, user: discord.User):
-    if not interaction.user.guild_permissions.ban_members:
+    # Ensure this command is used in a guild and resolve the invoking user to a Member
+    guild = interaction.guild
+    if guild is None:
+        await interaction.response.send_message("❌ This command can only be used in a server (guild).", ephemeral=True)
+        return
+
+    invoker = guild.get_member(interaction.user.id)
+    if not invoker or not invoker.guild_permissions.ban_members:
         await interaction.response.send_message("❌ You don't have permission to unban members.", ephemeral=True)
         return
     try:
-        await interaction.guild.unban(user)
+        await guild.unban(user)
         await interaction.response.send_message(f"✅ {user} has been unbanned.")
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ I don't have permission to unban that user.", ephemeral=True)
     except Exception as e:
-        await interaction.response.send_message(f"⚠️ Failed to unban {user}: {e}")
+        await interaction.response.send_message(f"⚠️ Failed to unban {user}: {e}", ephemeral=True)
 
 
 # Kick command
 @bot.tree.command(name="kick", description="Kick a member from the server")
 @app_commands.describe(member="The member to kick", reason="Reason for the kick")
-async def kick(interaction: discord.Interaction, member: discord.Member, reason: str = None):
-    if not interaction.user.guild_permissions.kick_members:
+async def kick(interaction: discord.Interaction, member: discord.Member, reason: Optional[str] = None):
+    # Ensure this command is used in a guild
+    if interaction.guild is None:
+        await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+        return
+
+    # Resolve the invoking user to a Member so we can check guild permissions
+    invoker = interaction.guild.get_member(interaction.user.id)
+    if not invoker or not invoker.guild_permissions.kick_members:
         await interaction.response.send_message("❌ You don't have permission to kick members.", ephemeral=True)
         return
-    await member.kick(reason=reason)
-    await interaction.response.send_message(f"✅ {member} has been kicked. Reason: {reason or 'No reason provided'}")
+
+    try:
+        await member.kick(reason=reason)
+        await interaction.response.send_message(f"✅ {member} has been kicked. Reason: {reason or 'No reason provided'}")
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ I don't have permission to kick this member.", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"⚠️ Failed to kick {member}: {e}", ephemeral=True)
 
 
 # Timeout command
 @bot.tree.command(name="timeout", description="Timeout a member for a certain number of seconds")
 @app_commands.describe(member="The member to timeout", seconds="Number of seconds to timeout", reason="Reason for timeout")
-async def timeout(interaction: discord.Interaction, member: discord.Member, seconds: int, reason: str = None):
-    if not interaction.user.guild_permissions.moderate_members:
+async def timeout(interaction: discord.Interaction, member: discord.Member, seconds: int, reason: Optional[str] = None):
+    # Ensure this command is used in a guild and resolve the invoking user to a Member
+    if interaction.guild is None:
+        await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+        return
+
+    invoker = interaction.guild.get_member(interaction.user.id)
+    if not invoker or not invoker.guild_permissions.moderate_members:
         await interaction.response.send_message("❌ You don't have permission to timeout members.", ephemeral=True)
         return
     try:
         duration = timedelta(seconds=seconds)
-        await member.timeout_for(duration, reason=reason)
+        until = datetime.utcnow() + duration
+        # Use Member.edit to set the timed_out_until field (discord.py API)
+        await member.edit(timed_out_until=until, reason=reason)
         await interaction.response.send_message(
             f"✅ {member.mention} has been timed out for {seconds} seconds. Reason: {reason or 'No reason provided'}"
         )
     except discord.Forbidden:
-        await interaction.response.send_message("❌ I don't have permission to timeout this member.")
+        await interaction.response.send_message("❌ I don't have permission to timeout this member.", ephemeral=True)
     except Exception as e:
-        await interaction.response.send_message(f"⚠️ Error: {e}")
+        await interaction.response.send_message(f"⚠️ Failed to timeout {member}: {e}", ephemeral=True)
 
-
-# Remove timeout
+# Remove timeout command
 @bot.tree.command(name="remove_timeout", description="Remove a timeout from a member")
 @app_commands.describe(member="The member to remove timeout from")
 async def remove_timeout(interaction: discord.Interaction, member: discord.Member):
-    if not interaction.user.guild_permissions.moderate_members:
+    # Ensure this command is used in a guild and resolve the invoking user to a Member
+    if interaction.guild is None:
+        await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+        return
+
+    invoker = interaction.guild.get_member(interaction.user.id)
+    if not invoker or not invoker.guild_permissions.moderate_members:
         await interaction.response.send_message("❌ You don't have permission to remove timeouts.", ephemeral=True)
         return
     try:
-        await member.timeout_for(None)
+        # Use Member.edit to clear the timeout
+        await member.edit(timed_out_until=None, reason=f"Timeout removed by {interaction.user}")
         await interaction.response.send_message(f"✅ Timeout removed from {member}.")
     except discord.Forbidden:
-        await interaction.response.send_message("❌ I don't have permission to remove timeout from this member.")
+        await interaction.response.send_message("❌ I don't have permission to remove timeout from this member.", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"⚠️ Error: {e}", ephemeral=True)
 
     
 
@@ -830,7 +887,12 @@ async def help_command(interaction: discord.Interaction):
 bot.tree.command(name="give_role", description="Give a role to a member")
 @app_commands.describe(member="The member to give the role to", role="The role to give")
 async def give_role(interaction: discord.Interaction, member: discord.Member, role: discord.Role):
-    if not interaction.user.guild_permissions.manage_roles:
+    # Ensure this command is used in a guild and resolve the invoking user to a Member
+    if interaction.guild is None:
+        await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+        return
+    invoker = interaction.guild.get_member(interaction.user.id)
+    if not invoker or not invoker.guild_permissions.manage_roles:
         await interaction.response.send_message("❌ You don't have permission to manage roles.", ephemeral=True)
         return
     try:
@@ -841,12 +903,16 @@ async def give_role(interaction: discord.Interaction, member: discord.Member, ro
     except Exception as e:
         await interaction.response.send_message(f"⚠️ Error: {e}", ephemeral=True)
 
-
-
+# remove role command
 bot.tree.command(name="remove_role", description="Remove a role from a member")
 @app_commands.describe(member="The member to remove the role from", role="The role to remove")
 async def remove_role(interaction: discord.Interaction, member: discord.Member, role: discord.Role):
-    if not interaction.user.guild_permissions.manage_roles:
+    # Ensure this command is used in a guild and resolve the invoking user to a Member
+    if interaction.guild is None:
+        await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+        return
+    invoker = interaction.guild.get_member(interaction.user.id)
+    if not invoker or not invoker.guild_permissions.manage_roles:
         await interaction.response.send_message("❌ You don't have permission to manage roles.", ephemeral=True)
         return
     try:
@@ -858,90 +924,143 @@ async def remove_role(interaction: discord.Interaction, member: discord.Member, 
         await interaction.response.send_message(f"⚠️ Error: {e}", ephemeral=True)
 
 
-
-bot.tree.command(name="avatar", description="display user's avatar")
-@app_commands.describe(user="The user to get the avatar of (optional)")
-async def avatar(interaction: discord.Interaction, user: discord.User = None):
-    user = user or interaction.user
-    embed = discord.Embed(title=f"{user}'s Avatar", color=discord.Color.blue())
-    embed.set_image(url=user.display_avatar.url)
-    await interaction.response.send_message(embed=embed)
-
-
+# clear messages command
 bot.tree.command(name="clear", description="Clear messages in a channel")
 @app_commands.describe(number="Number of messages to delete (max 100)")
 async def clear(interaction: discord.Interaction, number: int):
-    if not interaction.user.guild_permissions.manage_messages:
+    # Ensure this command is used in a guild and resolve the invoking user to a Member
+    if interaction.guild is None:
+        await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+        return
+    invoker = interaction.guild.get_member(interaction.user.id)
+    if not invoker or not invoker.guild_permissions.manage_messages:
         await interaction.response.send_message("❌ You don't have permission to manage messages.", ephemeral=True)
         return
     if number < 1 or number > 100:
         await interaction.response.send_message("❌ Please specify a number between 1 and 100.", ephemeral=True)
         return
-    deleted = await interaction.channel.purge(limit=number)
-    await interaction.response.send_message(f"🗑️ Deleted {len(deleted)} messages.", ephemeral=True)
 
+    channel = interaction.channel
+    # Only allow clearing in a guild text channel (not forum/category/DM/group)
+    if channel is None or not isinstance(channel, discord.TextChannel):
+        await interaction.response.send_message("❌ This command can only be used in a text channel.", ephemeral=True)
+        return
 
+    try:
+        # Collect the messages to delete then bulk delete them (avoids calling purge on non-text channels)
+        messages = [msg async for msg in channel.history(limit=number)]
+        if not messages:
+            await interaction.response.send_message("No messages to delete.", ephemeral=True)
+            return
 
-bot.tree.command(name="invite", description="looking for the bot invite link")
-async def invite(interaction: discord.Interaction):
-    invite_link = discord.utils.oauth_url(interaction.client.user.id)
-    await interaction.response.send_message(f"🤖 Here is your bot invite link: {invite_link}")
+        deleted = await channel.delete_messages(messages)
+        # delete_messages may return None or a list depending on the library version; derive count safely
+        count = len(deleted) if deleted else len(messages)
+        await interaction.response.send_message(f"🗑️ Deleted {count} messages.", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"⚠️ Failed to delete messages: {e}", ephemeral=True)
 
+# lock/unlock channel commands
 bot.tree.command(name="lock", description="disable @everyone from sending messages in a channel")
 async def lock(interaction: discord.Interaction):
-    if not interaction.user.guild_permissions.manage_roles:
+    # Ensure this command is used in a guild and resolve the invoking user to a Member
+    if interaction.guild is None:
+        await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+        return
+    invoker = interaction.guild.get_member(interaction.user.id)
+    if not invoker or not invoker.guild_permissions.manage_roles:
         await interaction.response.send_message("❌ You don't have permission to manage roles.", ephemeral=True)
         return
-    try:
-        await interaction.channel.set_permissions(interaction.guild.default_role, send_messages=False)
-        await interaction.response.send_message("🔒 Channel has been locked.")
-    except Exception as e:
-        await interaction.response.send_message(f"⚠️ Error: {e}", ephemeral=True)
 
+    channel = interaction.channel
+    # Ensure the channel is a guild channel that supports set_permissions (avoid Threads/DMs/GroupChannels)
+    if channel is None or not isinstance(channel, discord.abc.GuildChannel):
+        await interaction.response.send_message("❌ This command can only be used in a server text channel.", ephemeral=True)
+        return
+
+    try:
+        await channel.set_permissions(interaction.guild.default_role, send_messages=False)
+        await interaction.response.send_message("🔒 Channel has been locked.")
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ I don't have permission to change channel permissions.", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"⚠️ Failed to lock channel: {e}", ephemeral=True)
 
 
 bot.tree.command(name="unlock", description="enable @everyone to send messages in a channel")
 async def unlock(interaction: discord.Interaction):
-    if not interaction.user.guild_permissions.manage_roles:
+    # Ensure this command is used in a guild and resolve the invoking user to a Member
+    if interaction.guild is None:
+        await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+        return
+    invoker = interaction.guild.get_member(interaction.user.id)
+    if not invoker or not invoker.guild_permissions.manage_roles:
         await interaction.response.send_message("❌ You don't have permission to manage roles.", ephemeral=True)
         return
+
+    channel = interaction.channel
+    # Ensure the channel is a guild channel that supports set_permissions (avoid Threads/DMs/GroupChannels)
+    if channel is None or not isinstance(channel, discord.abc.GuildChannel):
+        await interaction.response.send_message("❌ This command can only be used in a server text channel.", ephemeral=True)
+        return
+
     try:
-        await interaction.channel.set_permissions(interaction.guild.default_role, send_messages=True)
+        await channel.set_permissions(interaction.guild.default_role, send_messages=True)
         await interaction.response.send_message("🔓 Channel has been unlocked.")
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ I don't have permission to change channel permissions.", ephemeral=True)
     except Exception as e:
-        await interaction.response.send_message(f"⚠️ Error: {e}", ephemeral=True)
+        await interaction.response.send_message(f"⚠️ Failed to unlock channel: {e}", ephemeral=True)
 
-
+# Move all members to the voice channel you are in
 bot.tree.command(name="move all", description="Move all members to the voice channel you are in")
 async def move_all(interaction: discord.Interaction):
-    if not interaction.user.guild_permissions.move_members:
+    # Ensure this command is used in a guild and resolve the invoking user to a Member
+    if interaction.guild is None:
+        await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+        return
+    invoker = interaction.guild.get_member(interaction.user.id)
+    if not invoker or not invoker.guild_permissions.move_members:
         await interaction.response.send_message("❌ You don't have permission to move members.", ephemeral=True)
         return
-    if not interaction.user.voice or not interaction.user.voice.channel:
+    if not invoker.voice or not invoker.voice.channel:
         await interaction.response.send_message("❌ You need to be in a voice channel to use this command.", ephemeral=True)
         return
-    target_channel = interaction.user.voice.channel
+    target_channel = invoker.voice.channel
     moved_count = 0
     for member in interaction.guild.members:
-        if member.voice and member.voice.channel and member != interaction.user:
+        if member.voice and member.voice.channel and member != invoker:
             try:
                 await member.move_to(target_channel)
                 moved_count += 1
-                await asyncio.sleep(1)  # Sleep to avoid rate limits
+                print(f"Moved {member} to {target_channel}")
             except Exception as e:
-                print(f"Failed to move {member}: {e}")
-    await interaction.response.send_message(f"✅ Moved {moved_count} members to {target_channel.mention}.")
+                # Log the failure and continue with other members
+                print(f"Failed to move {member} to {target_channel}: {e}")
+    # Send a summary response after attempting to move members
+    try:
+        await interaction.response.send_message(f"✅ Moved {moved_count} members to {target_channel.mention}.")
+    except Exception:
+        # In case the interaction response cannot be sent (already responded or other), just log
+        print(f"Could not send interaction response for move_all command in guild {interaction.guild.id}")
 
+# Move a specific user to the voice channel you are in
 bot.tree.command(name="move user", description="Move a specific user to the voice channel you are in")
 @app_commands.describe(member="The member to move")
 async def move_user(interaction: discord.Interaction, member: discord.Member):
-    if not interaction.user.guild_permissions.move_members:
+    # Ensure this command is used in a guild and resolve the invoking user to a Member
+    if interaction.guild is None:
+        await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+        return
+
+    invoker = interaction.guild.get_member(interaction.user.id)
+    if not invoker or not invoker.guild_permissions.move_members:
         await interaction.response.send_message("❌ You don't have permission to move members.", ephemeral=True)
         return
-    if not interaction.user.voice or not interaction.user.voice.channel:
+    if not invoker.voice or not invoker.voice.channel:
         await interaction.response.send_message("❌ You need to be in a voice channel to use this command.", ephemeral=True)
         return
-    target_channel = interaction.user.voice.channel
+    target_channel = invoker.voice.channel
     if not member.voice or not member.voice.channel:
         await interaction.response.send_message(f"❌ {member.mention} is not in a voice channel.", ephemeral=True)
         return
@@ -951,23 +1070,29 @@ async def move_user(interaction: discord.Interaction, member: discord.Member):
     except Exception as e:
         await interaction.response.send_message(f"⚠️ Failed to move {member.mention}: {e}", ephemeral=True)
 
-
+# Move yourself to another voice channel
 bot.tree.command(name="moveme", description="Move yourself to another voice channel")
 async def moveme(interaction: discord.Interaction, channel: discord.VoiceChannel):
-    if not interaction.user.guild_permissions.move_members:
+    # Ensure this command is used in a guild and resolve the invoking user to a Member
+    if interaction.guild is None:
+        await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+        return
+    invoker = interaction.guild.get_member(interaction.user.id)
+    if not invoker or not invoker.guild_permissions.move_members:
         await interaction.response.send_message("❌ You don't have permission to move members.", ephemeral=True)
         return
-    if not interaction.user.voice or not interaction.user.voice.channel:
+    if not invoker.voice or not invoker.voice.channel:
         await interaction.response.send_message("❌ You need to be in a voice channel to use this command.", ephemeral=True)
         return
-    target_channel = interaction.user.voice.channel
+    if not channel or not isinstance(channel, discord.VoiceChannel):
+        await interaction.response.send_message("❌ Please specify a valid voice channel.", ephemeral=True)
+        return
     try:
-        await interaction.user.move_to(target_channel)
-        await interaction.response.send_message(f"✅ Moved you to {target_channel.mention}.")
+        await invoker.move_to(channel)
+        await interaction.response.send_message(f"✅ Moved you to {channel.mention}.")
     except Exception as e:
         await interaction.response.send_message(f"⚠️ Failed to move you: {e}", ephemeral=True)
-
-
+        print(f"Failed to move {invoker} to {channel}: {e}")
 
 
 
