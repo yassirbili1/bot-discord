@@ -1269,7 +1269,7 @@ class TicketButton(View):
 
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            interaction.user: discord.PermissionOverwhite(read_messages=True, send_messages=True),
+            interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
             guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True)
         }
 
@@ -1298,7 +1298,7 @@ class TicketButton(View):
         await interaction.response.send_message(f"✅ Bug Ticket created! {channel.mention}", ephemeral=True)
 
 
-    discord.ui.button(label="🎫 Refund Ticket", style=discord.ButtonStyle.blue, custom_id="create_refund_ticket")
+    @discord.ui.button(label="🎫 Refund Ticket", style=discord.ButtonStyle.blue, custom_id="create_refund_ticket")
     async def refund_ticket_button(self, interaction: discord.Interaction, button: Button):
         global TICKET_COUNTER
         TICKET_COUNTER += 1
@@ -1309,8 +1309,8 @@ class TicketButton(View):
 
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            interaction.user: discord.PermissionOverwhite(read_messages=True, send_messages=True),
-            guild.me: discord.PermissionOverwrite(read_messges=True, send_messages=True)
+            interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+            guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True)
         }
 
         if STAFF_ROLE_ID:
@@ -1318,12 +1318,12 @@ class TicketButton(View):
             if staff_role:
                 overwrites[staff_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
 
-            channel = await guild.create_text_channel(
-                mame=ticket_name,
-                category=category,
-                overwrites=overwrites,
-                topic=f"Ticket by {interaction.user.name}"
-            )
+        channel = await guild.create_text_channel(
+            name=ticket_name,
+            category=category,
+            overwrites=overwrites,
+            topic=f"Ticket by {interaction.user.name}"
+        )
 
         embed = discord.Embed(
             title="🎫 New Refund Ticket Created",
