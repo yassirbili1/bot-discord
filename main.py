@@ -1401,7 +1401,7 @@ async def on_voice_state_update(member, before, after):
         new_channel = await member.guild.create_voice_channel(
             name=f"{member.display_name}'s Room",
             category=category,
-            user_limit=5
+            user_limit=None  # You can set a limit if desired
         )
 
         await new_channel.set_permissions(member, manage_channels=True, connect=True, move_members=True)
@@ -1411,9 +1411,9 @@ async def on_voice_state_update(member, before, after):
 
         # Background task: delete room when empty
         async def delete_when_empty(channel):
-            await asyncio.sleep(2)  # small delay to prevent instant deletion
+            await asyncio.sleep(1)  # small delay to prevent instant deletion
             while True:
-                await asyncio.sleep(5)
+                await asyncio.sleep(2)
                 if len(channel.members) == 0:
                     await channel.delete()
                     print(f"🗑️ Deleted empty room {channel.name}")
