@@ -1101,6 +1101,56 @@ async def moveme(interaction: discord.Interaction, channel: discord.VoiceChannel
 
 
 
+
+
+
+
+# Modal for close reason
+class CloseReasonModal(discord.ui.Modal, title="Close Ticket with Reason"):
+    reason = discord.ui.TextInput(
+        label="Reason for closing",
+        placeholder="Enter the reason for closing this ticket...",
+        style=discord.TextStyle.paragraph,
+        required=True,
+        max_length=500
+    )
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        channel = interaction.channel
+        
+        embed = discord.Embed(
+            title="🔒 Ticket Closing",
+            description=f"**Closed by:** {interaction.user.mention}\n**Reason:** {self.reason.value}\n\nThis ticket will be deleted in 5 seconds...",
+            color=discord.Color.red(),
+            timestamp=datetime.utcnow()
+        )
+        
+        await interaction.response.send_message(embed=embed)
+        await asyncio.sleep(5)
+        await channel.delete()
+
+# Ticket Control Buttons (Close/Close with Reason)
+class TicketControlView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    
+    @discord.ui.button(label="🔒 Close", style=discord.ButtonStyle.red, custom_id="close_ticket")
+    async def close_button(self, interaction: discord.Interaction, button: Button):
+        embed = discord.Embed(
+            title="🔒 Ticket Closing",
+            description=f"This ticket will be closed in 5 seconds...\nClosed by {interaction.user.mention}",
+            color=discord.Color.red(),
+            timestamp=datetime.utcnow()
+        )
+        
+        await interaction.response.send_message(embed=embed)
+        await asyncio.sleep(5)
+        await interaction.channel.delete()
+    
+    @discord.ui.button(label="📝 Close with Reason", style=discord.ButtonStyle.gray, custom_id="close_ticket_reason")
+    async def close_reason_button(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.send_modal(CloseReasonModal())
+
 # Ticket Button View
 class TicketButton(View):
     def __init__(self):
@@ -1142,7 +1192,8 @@ class TicketButton(View):
         )
         embed.set_footer(text=f"Ticket #{TICKET_COUNTER}")
         
-        await channel.send(f"{interaction.user.mention}", embed=embed)
+        control_view = TicketControlView()
+        await channel.send(f"{interaction.user.mention}", embed=embed, view=control_view)
         await interaction.response.send_message(f"✅ Ticket created! {channel.mention}", ephemeral=True)
 
 # Command to send ticket panel
@@ -1241,6 +1292,8 @@ async def transcript(interaction: discord.Interaction):
         f.write(transcript_text)
     
     await interaction.followup.send("📄 Transcript generated!", file=discord.File(filename), ephemeral=True)
+
+
 
 
 
