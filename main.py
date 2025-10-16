@@ -61,6 +61,7 @@ current_playing = {}
 # Configuration (adjust these)
 TICKET_CATEGORY_ID = 1428395363076804762  # Replace with your category ID
 STAFF_ROLE_ID = None  # Your staff role ID or None
+TICKET_LOG_CHANNEL_ID = 1428398041186172988  # Replace with your log channel ID or None
 TICKET_COUNTER = 0
 
 
