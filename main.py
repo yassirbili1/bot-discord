@@ -1353,7 +1353,7 @@ async def transcript(interaction: discord.Interaction):
 
 
 
-TRIGGER_CHANNEL_ID = 1428403634810388562  # Replace with your actual channel ID
+TRIGGER_CHANNEL_ID = 1428403547543830538  # Replace with your actual channel ID
 async def create_private_voice_channel(guild, user):
     """
     Helper function to create a new voice channel for the user.
