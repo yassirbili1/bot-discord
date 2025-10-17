@@ -1217,7 +1217,7 @@ class TicketButton(View):
     def __init__(self):
         super().__init__(timeout=None)
     
-    @discord.ui.button(label="🔹 Support", style=discord.ButtonStyle.green, custom_id="create_ticket")
+    @discord.ui.button(label="🔹 Support", style=discord.ButtonStyle.success, custom_id="create_ticket")
     async def ticket_button(self, interaction: discord.Interaction, button: Button):
         global TICKET_COUNTER
         TICKET_COUNTER += 1
@@ -1288,7 +1288,7 @@ class TicketButton(View):
         embed = discord.Embed(
             title="💳 New Purchase Ticket Created",
             description=f"**Opened by:** {interaction.user.mention}\n\nPlease describe the Bug and wait for staff to assist you.",
-            color=discord.ButtonStyle.primary(),
+            color=discord.Color.blue(),
             timestamp=datetime.utcnow()
         )
         embed.set_footer(text=f"Ticket #{TICKET_COUNTER}")
@@ -1328,7 +1328,7 @@ class TicketButton(View):
         embed = discord.Embed(
             title="🐞 Bug New Bug Ticket Created",
             description=f"**Opened by:** {interaction.user.mention}\n\nPlease describe the Bug and wait for staff to assist you.",
-            color=discord.ButtonStyle.danger(),
+            color=discord.Color.red(),
             timestamp=datetime.utcnow()
         )
         embed.set_footer(text=f"Ticket #{TICKET_COUNTER}")
@@ -1344,11 +1344,11 @@ class TicketButton(View):
 @app_commands.checks.has_permissions(administrator=True)
 async def ticket_panel(interaction: discord.Interaction):
     embed = discord.Embed(
-        title="🎫 Support Ticket System",
-        description="Need help? Click the button below to create a support ticket.\n\n**What are tickets?**\nTickets are private channels where you can get help from our staff team.",
+        title="🎫 Ticket System",
+        description="Need help? Click the button below to create a help ticket.\n\n**📌 Interact with the topic ticket based on what you need:**\n",
         color=discord.Color.blue()
     )
-    embed.add_field(name="📋 Instructions", value="Click the **Create Ticket** button below and describe your issue.", inline=False)
+    embed.add_field(name="📋 The Button Ticket", value="🔹 Support → If you need general help with the server (rules, features, or how something works).\n💳 Purchase → If you are interested in buying a pack, benefit, or service within the server.\n🐞 Bug → If you found an error, glitch, or bug in the server and want to report it so we can fix it.", inline=False)
     embed.set_footer(text="Our staff will respond as soon as possible")
     
     view = TicketButton()
