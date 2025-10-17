@@ -1173,8 +1173,20 @@ class CloseReasonModal(discord.ui.Modal, title="Close Ticket with Reason"):
     async def on_submit(self, interaction: discord.Interaction):
         channel = interaction.channel
         
-        # Log ticket closure
-        await log_ticket_close(interaction.guild, channel, interaction.user, self.reason.value)
+        # Send log before closing
+        if LOG_CHANNEL_ID:
+            log_channel = interaction.guild.get_channel(LOG_CHANNEL_ID)
+            if log_channel:
+                log_embed = discord.Embed(
+                    title="🔒 Ticket Closed",
+                    color=discord.Color.red(),
+                    timestamp=datetime.utcnow()
+                )
+                log_embed.add_field(name="Ticket", value=channel.name, inline=True)
+                log_embed.add_field(name="Closed by", value=interaction.user.mention, inline=True)
+                log_embed.add_field(name="Reason", value=self.reason.value, inline=False)
+                log_embed.set_footer(text=f"Ticket ID: {channel.id}")
+                await log_channel.send(embed=log_embed)
         
         embed = discord.Embed(
             title="🔒 Ticket Closing",
@@ -1194,8 +1206,42 @@ class TicketControlView(View):
     
     @discord.ui.button(label="🔒 Close", style=discord.ButtonStyle.red, custom_id="close_ticket")
     async def close_button(self, interaction: discord.Interaction, button: Button):
-        # Log ticket closure
-        await log_ticket_close(interaction.guild, interaction.channel, interaction.user, "No reason provided")
+        channel = interaction.channel
+        
+        # Generate transcript
+        messages = []
+        async for msg in channel.history(limit=None, oldest_first=True):
+            timestamp = msg.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            content = msg.content if msg.content else "[No text content]"
+            attachments = f" [Attachments: {', '.join([a.filename for a in msg.attachments])}]" if msg.attachments else ""
+            messages.append(f"[{timestamp}] {msg.author.name}: {content}{attachments}")
+        
+        transcript_text = "\n".join(messages)
+        filename = f"transcript-{channel.name}.txt"
+        
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(f"Ticket Transcript: {channel.name}\n")
+            f.write(f"Channel ID: {channel.id}\n")
+            f.write(f"Closed at: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC\n")
+            f.write(f"Closed by: {interaction.user.name}\n")
+            f.write("="*70 + "\n\n")
+            f.write(transcript_text)
+        
+        # Send log with transcript before closing
+        if LOG_CHANNEL_ID:
+            log_channel = interaction.guild.get_channel(LOG_CHANNEL_ID)
+            if log_channel:
+                log_embed = discord.Embed(
+                    title="🔒 Ticket Closed",
+                    color=discord.Color.red(),
+                    timestamp=datetime.utcnow()
+                )
+                log_embed.add_field(name="Ticket", value=channel.name, inline=True)
+                log_embed.add_field(name="Closed by", value=interaction.user.mention, inline=True)
+                log_embed.add_field(name="Reason", value="No reason provided", inline=False)
+                log_embed.add_field(name="Messages", value=f"{len(messages)} messages", inline=True)
+                log_embed.set_footer(text=f"Ticket ID: {channel.id}")
+                await log_channel.send(embed=log_embed, file=discord.File(filename))
         
         embed = discord.Embed(
             title="🔒 Ticket Closing",
@@ -1206,7 +1252,7 @@ class TicketControlView(View):
         
         await interaction.response.send_message(embed=embed)
         await asyncio.sleep(5)
-        await interaction.channel.delete()
+        await channel.delete()
     
     @discord.ui.button(label="📝 Close with Reason", style=discord.ButtonStyle.gray, custom_id="close_ticket_reason")
     async def close_reason_button(self, interaction: discord.Interaction, button: Button):
@@ -1368,6 +1414,21 @@ async def close(interaction: discord.Interaction):
         await interaction.response.send_message("❌ This command can only be used in ticket channels!", ephemeral=True)
         return
     
+    # Send log before closing
+    if LOG_CHANNEL_ID:
+        log_channel = interaction.guild.get_channel(LOG_CHANNEL_ID)
+        if log_channel:
+            log_embed = discord.Embed(
+                title="🔒 Ticket Closed",
+                color=discord.Color.red(),
+                timestamp=datetime.utcnow()
+            )
+            log_embed.add_field(name="Ticket", value=channel.name, inline=True)
+            log_embed.add_field(name="Closed by", value=interaction.user.mention, inline=True)
+            log_embed.add_field(name="Reason", value="Closed via command", inline=False)
+            log_embed.set_footer(text=f"Ticket ID: {channel.id}")
+            await log_channel.send(embed=log_embed)
+    
     embed = discord.Embed(
         title="🔒 Ticket Closing",
         description=f"This ticket will be closed in 5 seconds...\nClosed by {interaction.user.mention}",
@@ -1440,6 +1501,7 @@ async def transcript(interaction: discord.Interaction):
         f.write(transcript_text)
     
     await interaction.followup.send("📄 Transcript generated!", file=discord.File(filename), ephemeral=True)
+
 
 
 
