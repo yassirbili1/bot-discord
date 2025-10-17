@@ -1348,7 +1348,10 @@ async def ticket_panel(interaction: discord.Interaction):
         description="Need help? Click the button below to create a help ticket.\n\n**📌 Interact with the topic ticket based on what you need:**\n",
         color=discord.Color.blue()
     )
-    embed.add_field(name="📋 The Button Ticket", value="🔹 Support → If you need general help with the server (rules, features, or how something works).\n💳 Purchase → If you are interested in buying a pack, benefit, or service within the server.\n🐞 Bug → If you found an error, glitch, or bug in the server and want to report it so we can fix it.", inline=False)
+
+
+
+    embed.add_field(name="📋 The Button Ticket", value="🔹 Support → If you need general help with the server (rules, features, or how something works).\n  💳 Purchase → If you are interested in buying a pack, benefit, or service within the server.\n  🐞 Bug → If you found an error, glitch, or bug in the server and want to report it so we can fix it.", inline=False)
     embed.set_footer(text="Our staff will respond as soon as possible")
     
     view = TicketButton()
