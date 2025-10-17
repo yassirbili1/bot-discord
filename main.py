@@ -64,9 +64,9 @@ current_playing = {}
 
 
 # Configuration (adjust these)
-TICKET_CATEGORY_ID = 1428395363076804762  # Replace with your category ID
+SUPPORT_TICKET_CATEGORY_ID = 1428391800590307461  # Replace with your category ID
 BUG_TICKET_CATEGORY_ID = 1428463578012455103  # Replace with your category ID
-REFUND_TICKET_CATEGORY_ID = 1428463776411160636  # Replace with your category ID
+PURCHASE_TICKET_CATEGORY_ID = 1428395363076804762  # Replace with your category ID
 STAFF_ROLE_ID = None  # Your staff role ID or None
 TICKET_LOG_CHANNEL_ID = 1428398041186172988  # Replace with your log channel ID or None
 TICKET_COUNTER = 0
@@ -1217,16 +1217,16 @@ class TicketButton(View):
     def __init__(self):
         super().__init__(timeout=None)
     
-    @discord.ui.button(label="🎫 Report Ticket", style=discord.ButtonStyle.green, custom_id="create_ticket")
+    @discord.ui.button(label="🔹 Support", style=discord.ButtonStyle.green, custom_id="create_ticket")
     async def ticket_button(self, interaction: discord.Interaction, button: Button):
         global TICKET_COUNTER
         TICKET_COUNTER += 1
         
         guild = interaction.guild
-        category = discord.utils.get(guild.categories, id=TICKET_CATEGORY_ID) if TICKET_CATEGORY_ID else None
-        
-        ticket_name = f"Report Ticket-{interaction.user.name}-{TICKET_COUNTER}-"
-        
+        category = discord.utils.get(guild.categories, id=SUPPORT_TICKET_CATEGORY_ID) if SUPPORT_TICKET_CATEGORY_ID else None
+
+        ticket_name = f"Support Ticket-{interaction.user.name}-{TICKET_COUNTER}-"
+
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
             interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
@@ -1246,7 +1246,7 @@ class TicketButton(View):
         )
         
         embed = discord.Embed(
-            title="🎫 New Ticket Created",
+            title="🎫 New Support Ticket Created",
             description=f"**Opened by:** {interaction.user.mention}\n\nPlease describe your issue and wait for staff to assist you.",
             color=discord.Color.green(),
             timestamp=datetime.utcnow()
@@ -1255,12 +1255,52 @@ class TicketButton(View):
         
         control_view = TicketControlView()
         await channel.send(f"{interaction.user.mention}", embed=embed, view=control_view)
-        await interaction.response.send_message(f"✅ Ticket created! {channel.mention}", ephemeral=True)
+        await interaction.response.send_message(f"✅ Support Ticket created! {channel.mention}", ephemeral=True)
 
-    @discord.ui.button(label="🎫 Bug Ticket", style=discord.ButtonStyle.red, custom_id="create_bug_ticket")
-    async def bug_ticket_button(self, interaction: discord.Interaction, button: Button):
+    @discord.ui.button(label="💳 Purchase", style=discord.ButtonStyle.primary, custom_id="create_purchase_ticket")
+    async def purchase_ticket_button(self, interaction: discord.Interaction, button: Button):
         global TICKET_COUNTER
         TICKET_COUNTER += 1
+
+        guild = interaction.guild
+        category = discord.utils.get(guild.categories, id=PURCHASE_TICKET_CATEGORY_ID) if PURCHASE_TICKET_CATEGORY_ID else None
+
+        ticket_name = f"Purchase Ticket-{interaction.user.name}-{TICKET_COUNTER}-"
+
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(read_messages=False),
+            interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+            guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+        }
+
+        if STAFF_ROLE_ID:
+            staff_role = guild.get_role(STAFF_ROLE_ID)
+            if staff_role:
+                overwrites[staff_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
+
+        channel = await guild.create_text_channel(
+            name=ticket_name,
+            category=category,
+            overwrites=overwrites,
+            topic=f"Ticket by {interaction.user.name}"
+        )
+
+        embed = discord.Embed(
+            title="💳 New Purchase Ticket Created",
+            description=f"**Opened by:** {interaction.user.mention}\n\nPlease describe the Bug and wait for staff to assist you.",
+            color=discord.ButtonStyle.primary(),
+            timestamp=datetime.utcnow()
+        )
+        embed.set_footer(text=f"Ticket #{TICKET_COUNTER}")
+
+        control_view = TicketControlView()
+        await channel.send(f"{interaction.user.mention}", embed=embed, view=control_view)
+        await interaction.response.send_message(f"✅ Purchase Ticket created! {channel.mention}", ephemeral=True)
+
+        @discord.ui.button(label="🐞 Bug", style=discord.ButtonStyle.danger, custom_id="create_bug_ticket")
+        async def bug_ticket_button(self, interaction: discord.Interaction, button: Button):
+         global TICKET_COUNTER
+         TICKET_COUNTER += 1
 
         guild = interaction.guild
         category = discord.utils.get(guild.categories, id=BUG_TICKET_CATEGORY_ID) if BUG_TICKET_CATEGORY_ID else None
@@ -1286,9 +1326,9 @@ class TicketButton(View):
         )
 
         embed = discord.Embed(
-            title="🎫 New Bug Ticket Created",
+            title="🐞 Bug New Bug Ticket Created",
             description=f"**Opened by:** {interaction.user.mention}\n\nPlease describe the Bug and wait for staff to assist you.",
-            color=discord.Color.red(),
+            color=discord.ButtonStyle.danger(),
             timestamp=datetime.utcnow()
         )
         embed.set_footer(text=f"Ticket #{TICKET_COUNTER}")
