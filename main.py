@@ -1349,9 +1349,11 @@ async def ticket_panel(interaction: discord.Interaction):
         color=discord.Color.blue()
     )
 
+    embed.set_thumbnail(url="https://r2.fivemanage.com/2Fmxtyz3enFCAcfC5wghD/evolutionbanner.png")
+    embed.set_image(url="https://r2.fivemanage.com/2Fmxtyz3enFCAcfC5wghD/evolutionlogotransparantbg.png")
 
 
-    embed.add_field(name="📋 The Button Ticket", value="🔹 Support → If you need general help with the server (rules, features, or how something works).\n  💳 Purchase → If you are interested in buying a pack, benefit, or service within the server.\n  🐞 Bug → If you found an error, glitch, or bug in the server and want to report it so we can fix it.", inline=False)
+    embed.add_field(name="📋 The Button Ticket", value="🔹 Support → If you need general help with the server (rules, features, or how something works).\n\n  💳 Purchase → If you are interested in buying a pack, benefit, or service within the server.\n\n  🐞 Bug → If you found an error, glitch, or bug in the server and want to report it so we can fix it.", inline=False)
     embed.set_footer(text="Our staff will respond as soon as possible")
     
     view = TicketButton()
