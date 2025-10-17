@@ -1391,7 +1391,7 @@ class TicketButton(View):
 async def ticket_panel(interaction: discord.Interaction):
     embed = discord.Embed(
         title="🎫 Ticket System",
-        description="Need help? Click the button below to create a help ticket.\n\n**📌 Interact with the topic ticket based on what you need:**\n",
+        description="Need help? Click the button below to create a help ticket.\n\n**📌 Interact with the topic ticket based on what you need:**\n\n",
         color=discord.Color.blue()
     )
 
